@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import { createGroupHandler, joinGroupHandler, groupResultsHandler } from '../controllers/groupController';
+import { createGroupHandler, joinGroupHandler } from '../controllers/groupController';
+import { requireAuth } from '../middleware/auth';
 
 const router = Router();
 
-router.post('/', createGroupHandler);
-router.post('/join', joinGroupHandler);
-router.get('/:groupId/results', groupResultsHandler);
+router.post('/', requireAuth, createGroupHandler);
+router.post('/join', requireAuth, joinGroupHandler);
 
 export default router;

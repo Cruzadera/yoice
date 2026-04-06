@@ -1,34 +1,41 @@
-import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import bodyParser from 'body-parser';
+import express from 'express';
 import { initDB } from './services/db';
-import userRoutes from './routes/userRoutes';
+import authRoutes from './routes/authRoutes';
 import groupRoutes from './routes/groupRoutes';
+import pollRoutes from './routes/pollRoutes';
 import questionRoutes from './routes/questionRoutes';
-import answerRoutes from './routes/answerRoutes';
-import dailyQuestionRoutes from './routes/dailyQuestionRoutes';
-import { startDailyQuestionCron } from './services/cron';
+import userRoutes from './routes/userRoutes';
+import voteRoutes from './routes/voteRoutes';
+import { startPollCron } from './services/pollCron';
 
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = Number(process.env.PORT || 3001);
 
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
 
-app.use('/api/users', userRoutes);
+app.use('/auth', authRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/groups', groupRoutes);
+app.use('/api/user', userRoutes);
 app.use('/api/questions', questionRoutes);
-app.use('/api/answers', answerRoutes);
-app.use('/api/daily-questions', dailyQuestionRoutes);
+app.use('/api/polls', pollRoutes);
+app.use('/api/votes', voteRoutes);
 
-app.get('/api/health', (_, res) => res.json({ status: 'ok' }));
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok' });
+});
 
 initDB()
   .then(() => {
-    startDailyQuestionCron();
+    if (process.env.ENABLE_POLL_CRON === 'true') {
+      startPollCron();
+    }
+
     app.listen(port, () => {
       console.log(`Back-end running on http://localhost:${port}`);
     });

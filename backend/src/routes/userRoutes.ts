@@ -1,9 +1,11 @@
 import { Router } from 'express';
-import { createUserHandler, getUsersHandler } from '../controllers/userController';
+import { getCurrentUserHandler, updateUserNameHandler, updateUserProfileHandler } from '../controllers/userController';
+import { requireAuth } from '../middleware/auth';
 
 const router = Router();
 
-router.post('/', createUserHandler);
-router.get('/', getUsersHandler);
+router.get('/me', requireAuth, getCurrentUserHandler);
+router.post('/name', requireAuth, updateUserNameHandler);
+router.post('/profile', requireAuth, updateUserProfileHandler);
 
 export default router;

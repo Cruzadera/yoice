@@ -1,134 +1,85 @@
 import { Request, Response } from 'express';
 import prisma from '../services/db';
+import { ensureDailyPollForGroup } from '../services/pollFactory';
+
+const createInviteCode = () => Math.random().toString(36).slice(2, 8).toUpperCase();
 
 export const createGroupHandler = async (req: Request, res: Response) => {
-  const { name } = req.body;
+  if (!req.auth) {
+    return res.status(401).json({ message: 'Usuario no autenticado' });
+  }
+
+  const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+
+  if (!name) {
+    return res.status(400).json({ message: 'El nombre del grupo es obligatorio' });
+  }
+
   try {
-    const inviteCode = Math.random().toString(36).slice(2, 8).toUpperCase();
-    const group = await prisma.group.create({ data: { name, inviteCode } });
-    res.status(201).json(group);
+    const group = await prisma.group.create({
+      data: {
+        name,
+        inviteCode: createInviteCode(),
+        memberships: {
+          create: {
+            userId: req.auth.user.id
+          }
+        }
+      }
+    });
+
+    const memberCount = await prisma.groupMember.count({
+      where: { groupId: group.id }
+    });
+
+    return res.status(201).json({ group, poll: null, memberCount, pollReady: false });
   } catch (error) {
-    res.status(500).json({ message: 'Error al crear grupo', error });
+    return res.status(500).json({ message: 'Error al crear el grupo', error });
   }
 };
 
 export const joinGroupHandler = async (req: Request, res: Response) => {
-  const { inviteCode } = req.body;
-  try {
-    const group = await prisma.group.findUnique({ where: { inviteCode } });
-    if (!group) return res.status(404).json({ message: 'Grupo no encontrado' });
-    res.json(group);
-  } catch (error) {
-    res.status(500).json({ message: 'Error al unirse al grupo', error });
+  if (!req.auth) {
+    return res.status(401).json({ message: 'Usuario no autenticado' });
   }
-};
 
-export const groupResultsHandler = async (req: Request, res: Response) => {
-  const { groupId } = req.params;
+  const inviteCode = typeof req.body?.inviteCode === 'string' ? req.body.inviteCode.trim().toUpperCase() : '';
+
+  if (!inviteCode) {
+    return res.status(400).json({ message: 'El código del grupo es obligatorio' });
+  }
+
   try {
-    const numericGroupId = Number(groupId);
-    const today = new Date().toISOString().slice(0, 10);
-
     const group = await prisma.group.findUnique({
-      where: { id: numericGroupId }
+      where: { inviteCode }
     });
 
     if (!group) {
       return res.status(404).json({ message: 'Grupo no encontrado' });
     }
 
-    const daily = await prisma.dailyQuestion.findFirst({
+    await prisma.groupMember.upsert({
       where: {
-        groupId: numericGroupId,
-        date: {
-          gte: new Date(`${today}T00:00:00.000Z`),
-          lt: new Date(`${today}T23:59:59.999Z`)
+        groupId_userId: {
+          groupId: group.id,
+          userId: req.auth.user.id
         }
       },
-      include: { question: true },
-      orderBy: { date: 'desc' }
+      update: {},
+      create: {
+        groupId: group.id,
+        userId: req.auth.user.id
+      }
     });
 
-    if (!daily) {
-      return res.json({ groupId: numericGroupId, ranking: [], group, daily: null });
-    }
-
-    const answers = await prisma.answer.findMany({
-      where: {
-        groupId: numericGroupId,
-        questionId: daily.questionId
-      },
-      include: {
-        userFrom: true
-      },
-      orderBy: { date: 'desc' }
+    const memberCount = await prisma.groupMember.count({
+      where: { groupId: group.id }
     });
 
-    const targetIds = Array.from(
-      new Set(
-        answers
-          .map((answer) => answer.userTargetId)
-          .filter((value): value is number => typeof value === 'number')
-      )
-    );
+    const poll = memberCount >= 2 ? await ensureDailyPollForGroup(group.id) : null;
 
-    const targetUsers = targetIds.length
-      ? await prisma.user.findMany({
-          where: { id: { in: targetIds } }
-        })
-      : [];
-
-    const targetUsersMap = new Map(targetUsers.map((user) => [user.id, user]));
-    const rankingMap = new Map<
-      string,
-      {
-        id: string;
-        name: string;
-        avatar: string | null;
-        color: string | null;
-        score: number;
-        voters: Array<{ id: string; name: string; avatar: string | null }>;
-      }
-    >();
-
-    for (const answer of answers) {
-      const targetUser = typeof answer.userTargetId === 'number' ? targetUsersMap.get(answer.userTargetId) : null;
-      const fallbackName = answer.answerText?.trim() || 'Respuesta';
-      const itemKey = targetUser ? `user-${targetUser.id}` : `text-${fallbackName.toLowerCase()}`;
-
-      if (!rankingMap.has(itemKey)) {
-        rankingMap.set(itemKey, {
-          id: itemKey,
-          name: targetUser?.name || fallbackName,
-          avatar: targetUser?.avatar || null,
-          color: null,
-          score: 0,
-          voters: []
-        });
-      }
-
-      const rankingItem = rankingMap.get(itemKey);
-      if (!rankingItem) {
-        continue;
-      }
-
-      rankingItem.score += 1;
-      rankingItem.voters.push({
-        id: String(answer.userFrom.id),
-        name: answer.userFrom.name,
-        avatar: answer.userFrom.avatar || null
-      });
-    }
-
-    const ranking = Array.from(rankingMap.values()).sort((a, b) => b.score - a.score);
-
-    return res.json({
-      groupId: numericGroupId,
-      ranking,
-      group,
-      daily
-    });
+    return res.json({ group, poll, memberCount, pollReady: memberCount >= 2 });
   } catch (error) {
-    return res.status(500).json({ message: 'Error al obtener resultados del grupo', error });
+    return res.status(500).json({ message: 'Error al unirse al grupo', error });
   }
 };

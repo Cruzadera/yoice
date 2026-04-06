@@ -1,39 +1,63 @@
 # Surveys App
 
-Repositorio para la aplicación de encuestas (fullstack):
-- `backend/`: API con TypeScript, Express y Prisma.
-- `frontend/`: app móvil con Expo/React Native.
+Aplicación de encuestas con:
+- `backend/`: Node.js + Express + Prisma.
+- `frontend/`: Expo/React Native Web.
+- `PostgreSQL`: base de datos externa ya desplegada en Docker.
 
-## Estructura
+## Flujo actual
 
-- backend/
-  - src/index.ts: servidor principal.
-  - src/controllers: rutas y controladores.
-  - src/models: definiciones de modelos.
-  - prisma/: schema, migraciones y DB.
-  - package.json: dependencias y scripts.
+1. El usuario abre un enlace de WhatsApp con formato `/auth/whatsapp?token=XYZ&pollId=abc123`.
+2. El frontend llama al backend para validar el token.
+3. Si el usuario no tiene nombre, entra en `/onboarding`.
+4. Si ya está completo, entra directamente en `/poll/{pollId}`.
+5. El voto se guarda en PostgreSQL usando Prisma y se bloquean duplicados con `@@unique([pollId, userId])`.
 
-- frontend/
-  - app.json + package.json
-  - src/App.tsx: punto de entrada.
-  - src/screens/: pantallas de la app.
-  - src/services/api.ts: cliente HTTP.
+## Modelo de datos
 
-## Requisitos
+- `Question`: catálogo predefinido de preguntas.
+- `Poll`: instancia diaria o puntual ligada a una `Question`.
+- `Option`: opciones dinámicas generadas desde usuarios.
+- `Vote`: voto emitido por un usuario sobre una `Option` de una `Poll`.
 
-- Node.js 18+ (recomendado)
-- npm o yarn
-- SQLite (opcional, Prisma usa SQLite por defecto)
+Tambien existe una entrada standalone desde la propia app:
 
-## Instalación
+1. El usuario abre la app sin enlace.
+2. Introduce `phone`, `name` opcional y `pollId`.
+3. El backend genera el mismo token interno y redirige al mismo flujo de onboarding o encuesta.
+
+## Variables de entorno
+
+### Backend
+
+Archivo: `backend/.env`
+
+```env
+DATABASE_URL="postgresql://user:password@host:5432/app_encuestas"
+JWT_SECRET="cambia-este-secreto"
+PORT=3001
+ENABLE_POLL_CRON=false
+```
+
+### Frontend
+
+Archivo: `frontend/.env`
+
+```env
+EXPO_PUBLIC_API_URL="http://localhost:3001/api"
+```
+
+## Puesta en marcha
 
 ### Backend
 
 ```bash
 cd backend
 npm install
-npx prisma migrate deploy
-npm run dev
+npm run prisma:generate
+npm run prisma:migrate
+npm run prisma:seed
+npm run start
 ```
 
 ### Frontend
@@ -41,26 +65,45 @@ npm run dev
 ```bash
 cd frontend
 npm install
-npm start
+npm run start
 ```
 
-## Uso
+## Endpoints principales
 
-1. Iniciar backend (en `http://localhost:3000` por defecto).
-2. Iniciar frontend (Expo).
-3. Consumir APIs desde la app.
+- `GET /auth/whatsapp?token=...&pollId=...`
+- `GET /api/auth/whatsapp?token=...&pollId=...`
+- `POST /api/auth/standalone`
+- `POST /api/user/name`
+- `GET /api/user/me`
+- `GET /api/polls/:pollId`
+- `POST /api/polls/generate`
+- `POST /api/polls/ensure-daily`
+- `GET /api/questions`
+- `POST /api/votes`
 
-## Configuración
+## Consultas Prisma usadas
 
-- Backend: copia `.env.example` (si existe) a `.env` y ajusta `DATABASE_URL`.
-- Frontend: revisa `src/services/api.ts` para la URL del backend.
+```ts
+const poll = await prisma.poll.findUnique({
+  where: { id: pollId },
+  include: {
+    question: true,
+    options: {
+      include: { user: true }
+    },
+    votes: true
+  }
+});
 
-## Contribución
+const vote = await prisma.vote.create({
+  data: {
+    pollId,
+    userId,
+    optionId
+  }
+});
+```
 
-1. Hacer fork.
-2. Crear rama `feature/x`.
-3. Hacer PR con descripción clara.
+## Seed de preguntas
 
-## Licencia
-
-MIT
+El catálogo base se carga desde [questions.json](/home/maria/proyectos/app_encuestas/data/questions.json) mediante [seed.ts](/home/maria/proyectos/app_encuestas/backend/prisma/seed.ts).

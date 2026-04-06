@@ -3,57 +3,99 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id       Int      @id @default(autoincrement())
-  name     String
-  avatar   String?
-  answers  Answer[] @relation("UserFrom")
+  id        String   @id @default(uuid())
+  authKey   String?  @unique
+  phone     String?  @unique
+  name      String?
+  avatarColor String?
+  avatarImage String?
+  votes     Vote[]
+  options   Option[]
+  memberships GroupMember[]
+  createdAt DateTime @default(now())
 }
 
 model Group {
-  id         Int              @id @default(autoincrement())
-  name       String
-  inviteCode String           @unique
-  answers    Answer[]
-  daily      DailyQuestion[]
+  id          String        @id @default(uuid())
+  name        String
+  inviteCode  String        @unique
+  memberships GroupMember[]
+  polls       Poll[]
+  createdAt   DateTime      @default(now())
+}
+
+model GroupMember {
+  id        String   @id @default(uuid())
+  groupId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
 }
 
 model Question {
-  id             Int      @id @default(autoincrement())
-  text           String
-  type           String   @default("random")
-  tipoSeleccion  String   @default("multiple")
-  answers        Answer[]
-  daily          DailyQuestion[]
+  id            String   @id
+  text          String
+  category      String
+  selectionType String
+  nsfw          Boolean
+  active        Boolean
+  createdAt     DateTime @default(now())
+
+  polls Poll[]
 }
 
-model Answer {
-  id           Int       @id @default(autoincrement())
-  questionId   Int
-  userFromId   Int
-  userTargetId Int?
-  groupId      Int
-  answerText   String
-  date         DateTime  @default(now())
-  isAnonymous  Boolean   @default(false)
+model Poll {
+  id         String   @id @default(uuid())
+  questionId String
+  groupId    String?
+  expiresAt  DateTime?
+  createdAt  DateTime @default(now())
 
-  question     Question  @relation(fields: [questionId], references: [id])
-  userFrom     User      @relation("UserFrom", fields: [userFromId], references: [id])
-  group        Group     @relation(fields: [groupId], references: [id])
+  question Question @relation(fields: [questionId], references: [id])
+  group    Group?    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  options  Option[]
+  votes    Vote[]
+
+  @@index([questionId])
+  @@index([groupId])
 }
 
-model DailyQuestion {
-  id         Int      @id @default(autoincrement())
-  questionId Int
-  groupId    Int
-  date       DateTime @default(now())
+model Option {
+  id        String   @id @default(uuid())
+  pollId    String
+  userId    String
+  createdAt DateTime @default(now())
 
-  question   Question @relation(fields: [questionId], references: [id])
-  group      Group    @relation(fields: [groupId], references: [id])
+  poll  Poll   @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  user  User   @relation(fields: [userId], references: [id])
+  votes Vote[]
 
-  @@unique([groupId, date])
+  @@unique([pollId, userId])
+  @@index([pollId])
+}
+
+model Vote {
+  id        String   @id @default(uuid())
+  pollId    String
+  userId    String
+  optionId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  poll   Poll   @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option  Option @relation(fields: [optionId], references: [id])
+
+  @@unique([pollId, userId])
+  @@index([pollId])
+  @@index([optionId])
 }

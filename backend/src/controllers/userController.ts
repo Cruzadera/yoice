@@ -1,21 +1,74 @@
 import { Request, Response } from 'express';
 import prisma from '../services/db';
 
-export const createUserHandler = async (req: Request, res: Response) => {
-  const { name, avatar } = req.body;
+export const getCurrentUserHandler = async (req: Request, res: Response) => {
+  if (!req.auth) {
+    return res.status(401).json({ message: 'Usuario no autenticado' });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: req.auth.user.id }
+  });
+
+  return res.json(user);
+};
+
+export const updateUserNameHandler = async (req: Request, res: Response) => {
+  if (!req.auth) {
+    return res.status(401).json({ message: 'Usuario no autenticado' });
+  }
+
+  const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+
+  if (!name) {
+    return res.status(400).json({ message: 'El nombre es obligatorio' });
+  }
+
   try {
-    const user = await prisma.user.create({ data: { name, avatar: avatar || null } });
-    res.status(201).json(user);
+    const user = await prisma.user.update({
+      where: { id: req.auth.user.id },
+      data: { name }
+    });
+
+    return res.json(user);
   } catch (error) {
-    res.status(500).json({ message: 'Error al crear usuario', error });
+    return res.status(500).json({ message: 'Error al guardar el nombre del usuario', error });
   }
 };
 
-export const getUsersHandler = async (_: Request, res: Response) => {
+export const updateUserProfileHandler = async (req: Request, res: Response) => {
+  if (!req.auth) {
+    return res.status(401).json({ message: 'Usuario no autenticado' });
+  }
+
+  const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+  const avatarColor = typeof req.body?.avatarColor === 'string' ? req.body.avatarColor.trim() : '';
+  const avatarImage = typeof req.body?.avatarImage === 'string' ? req.body.avatarImage.trim() : '';
+
+  if (!name) {
+    return res.status(400).json({ message: 'El nombre es obligatorio' });
+  }
+
+  if (avatarImage && !avatarImage.startsWith('data:image/')) {
+    return res.status(400).json({ message: 'La imagen del avatar no tiene un formato válido' });
+  }
+
+  if (avatarImage.length > 3_000_000) {
+    return res.status(400).json({ message: 'La imagen del avatar es demasiado grande' });
+  }
+
   try {
-    const users = await prisma.user.findMany();
-    res.json(users);
+    const user = await prisma.user.update({
+      where: { id: req.auth.user.id },
+      data: {
+        name,
+        avatarColor: avatarColor || null,
+        avatarImage: avatarImage || null
+      }
+    });
+
+    return res.json(user);
   } catch (error) {
-    res.status(500).json({ message: 'Error al obtener usuarios', error });
+    return res.status(500).json({ message: 'Error al guardar el perfil del usuario', error });
   }
 };

@@ -34,6 +34,7 @@ coverage/
 # Prisma
 prisma/migrations/
 *.db
+data/
 
 # React Native / Expo
 .expo/

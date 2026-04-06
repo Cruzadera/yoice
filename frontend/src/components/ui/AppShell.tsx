@@ -5,10 +5,11 @@ type Props = {
   eyebrow?: string;
   title: string;
   subtitle?: string;
+  headerAction?: React.ReactNode;
   children: React.ReactNode;
 };
 
-const AppShell: React.FC<Props> = ({ eyebrow, title, subtitle, children }) => {
+const AppShell: React.FC<Props> = ({ eyebrow, title, subtitle, headerAction, children }) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.backgroundHaloTop} />
@@ -17,6 +18,7 @@ const AppShell: React.FC<Props> = ({ eyebrow, title, subtitle, children }) => {
 
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
+          {headerAction ? <View style={styles.headerAction}>{headerAction}</View> : null}
           {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
           <Text style={styles.title}>{title}</Text>
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
@@ -69,6 +71,10 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 8,
     marginBottom: 18
+  },
+  headerAction: {
+    alignSelf: 'flex-end',
+    marginBottom: 12
   },
   eyebrow: {
     fontSize: 12,
