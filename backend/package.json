@@ -1,5 +1,5 @@
 {
-  "name": "askus-backend",
+  "name": "votia-backend",
   "version": "0.1.0",
   "private": true,
   "main": "dist/index.js",
@@ -19,11 +19,13 @@
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "node-cron": "^3.0.3"
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.10.1"
   },
   "devDependencies": {
     "@types/cors": "^2.8.14",
     "@types/express": "^4.17.17",
+    "@types/nodemailer": "^6.4.17",
     "@types/node": "^20.14.4",
     "@types/node-cron": "^3.0.11",
     "eslint": "^8.45.0",

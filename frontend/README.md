@@ -1,4 +1,4 @@
-# AskUs Frontend
+# Votia Frontend
 
 Frontend Expo adaptado a dos entradas:
 

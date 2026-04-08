@@ -1,4 +1,4 @@
-# AskUs Backend
+# Votia Backend
 
 Backend Express preparado para autologin desde WhatsApp, Prisma y PostgreSQL.
 

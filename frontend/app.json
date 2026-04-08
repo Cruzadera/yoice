@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "AskUs Daily",
-    "slug": "askus-daily",
+    "name": "Votia",
+    "slug": "votia",
     "version": "1.0.0",
-    "scheme": "askusdaily",
+    "scheme": "votia",
     "platforms": ["android", "ios", "web"],
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",

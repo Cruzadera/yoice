@@ -10,6 +10,7 @@ datasource db {
 model User {
   id        String   @id @default(uuid())
   authKey   String?  @unique
+  email     String?  @unique
   phone     String?  @unique
   name      String?
   avatarColor String?
@@ -17,7 +18,26 @@ model User {
   votes     Vote[]
   options   Option[]
   memberships GroupMember[]
+  emailLoginTokens EmailLoginToken[]
   createdAt DateTime @default(now())
+}
+
+model EmailLoginToken {
+  id          String   @id @default(uuid())
+  email       String
+  tokenHash   String   @unique
+  pollId      String?
+  waGroupId   String?
+  waGroupName String?
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime @default(now())
+  userId      String?
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([email])
+  @@index([expiresAt])
 }
 
 model Group {

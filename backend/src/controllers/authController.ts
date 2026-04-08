@@ -2,8 +2,18 @@ import { Request, Response } from 'express';
 import crypto from 'crypto';
 import prisma from '../services/db';
 import { createAutologinToken, deriveAuthKey, verifyAutologinToken } from '../utils/token';
+import { sendLoginEmail } from '../services/email.service';
 
 const createInviteCode = () => Math.random().toString(36).slice(2, 8).toUpperCase();
+const frontendUrl = process.env.FRONTEND_URL ?? process.env.APP_URL ?? 'http://localhost:8081';
+const backendPublicUrl =
+  process.env.BACKEND_PUBLIC_URL ??
+  process.env.API_URL ??
+  process.env.BACKEND_URL ??
+  `http://localhost:${process.env.PORT || 3001}`;
+
+const normalizeEmail = (value: string) => value.trim().toLowerCase();
+const hashOneTimeToken = (token: string) => crypto.createHash('sha256').update(token).digest('hex');
 
 const createUniqueInviteCode = async () => {
   for (let attempt = 0; attempt < 10; attempt += 1) {
@@ -177,5 +187,114 @@ export const standaloneLoginHandler = async (req: Request, res: Response) => {
     });
   } catch (error) {
     return res.status(500).json({ message: 'No se pudo iniciar el acceso standalone', error });
+  }
+};
+
+export const startEmailLoginHandler = async (req: Request, res: Response) => {
+  const email = typeof req.body?.email === 'string' ? normalizeEmail(req.body.email) : '';
+  const pollId = typeof req.body?.pollId === 'string' ? req.body.pollId.trim() : '';
+  const waGroupId = typeof req.body?.waGroupId === 'string' ? req.body.waGroupId.trim() : '';
+  const waGroupName = typeof req.body?.waGroupName === 'string' ? req.body.waGroupName.trim() : '';
+
+  if (!email || !email.includes('@')) {
+    return res.status(400).json({ message: 'Email no válido.' });
+  }
+
+  try {
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = hashOneTimeToken(rawToken);
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    await prisma.emailLoginToken.create({
+      data: {
+        email,
+        tokenHash,
+        pollId: pollId || null,
+        waGroupId: waGroupId || null,
+        waGroupName: waGroupName || null,
+        expiresAt
+      }
+    });
+
+    const loginUrl = `${backendPublicUrl.replace(/\/$/, '')}/auth/email/verify?token=${encodeURIComponent(rawToken)}`;
+    const sentBySmtp = await sendLoginEmail(email, loginUrl);
+
+    return res.json({
+      ok: true,
+      message: 'Si el correo existe, te hemos enviado un enlace de acceso.',
+      ...(sentBySmtp
+        ? {}
+        : {
+            // Fallback de desarrollo si no hay SMTP configurado.
+            debugLoginUrl: loginUrl
+          })
+    });
+  } catch (error) {
+    console.error('No se pudo iniciar login por email', error);
+    return res.status(500).json({ message: 'No se pudo iniciar el acceso por email.' });
+  }
+};
+
+export const verifyEmailLoginHandler = async (req: Request, res: Response) => {
+  const token = typeof req.query.token === 'string' ? req.query.token.trim() : '';
+
+  if (!token) {
+    return res.status(400).json({ message: 'Token de email obligatorio.' });
+  }
+
+  try {
+    const tokenHash = hashOneTimeToken(token);
+
+    const emailToken = await prisma.emailLoginToken.findUnique({
+      where: { tokenHash }
+    });
+
+    if (!emailToken || emailToken.usedAt || emailToken.expiresAt < new Date()) {
+      return res.status(401).json({ message: 'Enlace inválido o expirado.' });
+    }
+
+    const authSubject = `email:${emailToken.email}`;
+    const authKey = deriveAuthKey(authSubject);
+
+    const user = await prisma.user.upsert({
+      where: { authKey },
+      update: {
+        email: emailToken.email
+      },
+      create: {
+        authKey,
+        email: emailToken.email
+      }
+    });
+
+    await prisma.emailLoginToken.update({
+      where: { id: emailToken.id },
+      data: { usedAt: new Date(), userId: user.id }
+    });
+
+    await ensureGroupMembership(
+      user.id,
+      user.name,
+      emailToken.waGroupId,
+      emailToken.waGroupName
+    );
+
+    const appToken = createAutologinToken(authSubject);
+    const redirectUrl = new URL('/auth/whatsapp', `${frontendUrl.replace(/\/$/, '')}/`);
+    redirectUrl.searchParams.set('token', appToken);
+    if (emailToken.pollId) {
+      redirectUrl.searchParams.set('pollId', emailToken.pollId);
+    }
+    if (emailToken.waGroupId) {
+      redirectUrl.searchParams.set('waGroupId', emailToken.waGroupId);
+    }
+    if (emailToken.waGroupName) {
+      redirectUrl.searchParams.set('waGroupName', emailToken.waGroupName);
+    }
+
+    return res.redirect(redirectUrl.toString());
+  } catch (error) {
+    console.error('No se pudo verificar login por email', error);
+    return res.status(500).json({ message: 'No se pudo validar el enlace de email.' });
   }
 };

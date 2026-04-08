@@ -7,45 +7,44 @@ import api from '../services/api';
 
 type Props = {
   onHome: () => void;
-  onGroupLobby: (params: {
-    token: string;
-    userName?: string | null;
-    avatarColor?: string | null;
-    avatarImage?: string | null;
-  }) => void;
+  pollId?: string;
 };
 
-const StandaloneAccessScreen: React.FC<Props> = ({ onHome, onGroupLobby }) => {
-  const [name, setName] = useState('');
+const StandaloneAccessScreen: React.FC<Props> = ({ onHome, pollId }) => {
+  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [debugLoginUrl, setDebugLoginUrl] = useState<string | null>(null);
 
   const handleAccess = async () => {
-    if (!name.trim()) {
-      Alert.alert('Datos requeridos', 'Necesitamos tu nombre para abrir el modo standalone.');
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail || !normalizedEmail.includes('@')) {
+      Alert.alert('Datos requeridos', 'Introduce un correo válido para continuar.');
       return;
     }
 
     setErrorMessage('');
+    setSuccessMessage('');
+    setDebugLoginUrl(null);
     setLoading(true);
 
     try {
-      const { data } = await api.loginStandalone({
-        name: name.trim()
+      const { data } = await api.startEmailLogin({
+        email: normalizedEmail,
+        ...(pollId ? { pollId } : {})
       });
 
-      onGroupLobby({
-        token: data.token,
-        userName: data.user.name,
-        avatarColor: data.user.avatarColor,
-        avatarImage: data.user.avatarImage
-      });
+      setSuccessMessage(data.message);
+      setDebugLoginUrl(data.debugLoginUrl || null);
+      Alert.alert('Revisa tu correo', data.message);
     } catch (error: any) {
-      console.error('Error acceso standalone', error);
+      console.error('Error acceso por email', error);
       const message =
         error?.response?.data?.message ||
         error?.message ||
-        'No se pudo abrir la encuesta.';
+        'No se pudo iniciar el acceso por email.';
       setErrorMessage(message);
       Alert.alert('Acceso no disponible', message);
     } finally {
@@ -55,30 +54,37 @@ const StandaloneAccessScreen: React.FC<Props> = ({ onHome, onGroupLobby }) => {
 
   return (
     <AppShell
-      eyebrow="Standalone"
-      title="Abrir encuesta sin bot"
-      subtitle="Este modo es útil para pruebas, acceso manual y usos fuera de WhatsApp, pero termina en el mismo flujo de negocio."
+      eyebrow="Acceso"
+      title="Entrar con email"
+      subtitle="Te enviamos un enlace mágico al correo. No necesitas contraseña ni depender de WhatsApp privado."
     >
       <View style={styles.hintCard}>
-        <Text style={styles.hintTitle}>Qué necesitas</Text>
-        <Text style={styles.hintText}>Solo te pedimos un nombre visible. La identidad interna se genera automáticamente sin guardar teléfono.</Text>
+        <Text style={styles.hintTitle}>Cómo funciona</Text>
+        <Text style={styles.hintText}>1) Escribes tu email. 2) Te enviamos un enlace. 3) Al abrirlo quedas autenticado para votar.</Text>
       </View>
       <FieldInput
-        label="Nombre"
-        placeholder="Cómo quieres aparecer"
-        value={name}
-        onChangeText={setName}
-        autoCapitalize="words"
+        label="Email"
+        placeholder="tu@email.com"
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
         autoCorrect={false}
+        keyboardType="email-address"
       />
 
+      {pollId ? (
+        <Text style={styles.contextText}>Accediendo a la encuesta: {pollId}</Text>
+      ) : null}
+
       {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+      {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
+      {debugLoginUrl ? <Text style={styles.debugText}>DEBUG LINK: {debugLoginUrl}</Text> : null}
 
       <PrimaryButton
-        title={loading ? 'Abriendo...' : 'Continuar'}
+        title={loading ? 'Enviando...' : 'Enviar enlace'}
         onPress={handleAccess}
         loading={loading}
-        disabled={!name.trim()}
+        disabled={!email.trim()}
       />
       <PrimaryButton title="Volver" onPress={onHome} variant="secondary" style={styles.backButton} />
     </AppShell>
@@ -103,6 +109,11 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     color: '#5e6983'
   },
+  contextText: {
+    marginBottom: 10,
+    fontSize: 13,
+    color: '#475467'
+  },
   backButton: {
     marginTop: 10
   },
@@ -112,6 +123,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '600'
+  },
+  successText: {
+    marginBottom: 12,
+    color: '#067647',
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '600'
+  },
+  debugText: {
+    marginBottom: 12,
+    color: '#344054',
+    fontSize: 12,
+    lineHeight: 18
   }
 });
 

@@ -119,6 +119,12 @@ export type StandaloneAccessResponse = {
   };
 };
 
+export type EmailLoginStartResponse = {
+  ok: boolean;
+  message: string;
+  debugLoginUrl?: string;
+};
+
 export type UserProfileResponse = {
   id: string;
   authKey: string | null;
@@ -161,6 +167,8 @@ export default {
     api.get<AccessResponse>('/auth/whatsapp', {
       params: { token, pollId, waGroupId, waGroupName }
     }),
+  startEmailLogin: (payload: { email: string; pollId?: string; waGroupId?: string; waGroupName?: string }) =>
+    api.post<EmailLoginStartResponse>('/auth/email/start', payload),
   loginStandalone: (payload: { name: string }) =>
     api.post<StandaloneAccessResponse>('/auth/standalone', payload),
   getMe: (token: string) => api.get<UserProfileResponse>('/user/me', authHeaders(token)),

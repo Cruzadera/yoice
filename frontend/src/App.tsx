@@ -15,7 +15,7 @@ import { PollResponse } from './services/api';
 
 type ScreenState =
   | { name: 'Home' }
-  | { name: 'StandaloneAccess' }
+  | { name: 'StandaloneAccess'; pollId?: string }
   | { name: 'GroupList'; token: string; userName?: string | null; avatarColor?: string | null; avatarImage?: string | null }
   | {
       name: 'GroupLobby';
@@ -67,8 +67,14 @@ const getStateFromUrl = (rawUrl?: string | null): ScreenState => {
       return { name: 'StandaloneAccess' };
     }
 
-    if (path.startsWith('poll/') && token) {
-      return { name: 'Poll', token, pollId: path.replace('poll/', '') };
+    if (path.startsWith('poll/')) {
+      const pollIdFromPath = path.replace('poll/', '');
+
+      if (token) {
+        return { name: 'Poll', token, pollId: pollIdFromPath };
+      }
+
+      return { name: 'StandaloneAccess', pollId: pollIdFromPath };
     }
 
     return { name: 'Home' };
@@ -114,7 +120,7 @@ export default function App() {
       {screen.name === 'StandaloneAccess' ? (
         <StandaloneAccessScreen
           onHome={() => setScreen({ name: 'Home' })}
-          onGroupLobby={(params) => setScreen({ name: 'GroupList', ...params })}
+          pollId={screen.pollId}
         />
       ) : null}
 
