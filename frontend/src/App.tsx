@@ -113,10 +113,22 @@ export default function App() {
       }
     };
 
+    // Resolves with null after 3 s to prevent Linking from hanging the bootstrap.
+    const getInitialUrlSafe = (): Promise<string | null> =>
+      Promise.race([
+        Linking.getInitialURL(),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000))
+      ]);
+
     const bootstrap = async () => {
+      console.log('[bootstrap] start');
+
       const href = typeof window !== 'undefined' ? window.location.href : null;
-      const initialUrl = href || (await Linking.getInitialURL());
+      const initialUrl = href || (await getInitialUrlSafe());
+      console.log('[bootstrap] initialUrl:', initialUrl);
+
       const urlState = getStateFromUrl(initialUrl);
+      console.log('[bootstrap] urlState:', urlState.name);
 
       // If the URL carries an auth token, honour it — don't restore the session.
       if (urlState.name === 'AuthCallback' || urlState.name === 'EmailVerified') {
@@ -129,6 +141,7 @@ export default function App() {
       const savedToken = loadToken();
       if (savedToken) {
         try {
+          console.log('[bootstrap] restoring session…');
           const { data: user } = await api.getMe(savedToken);
           if (mounted) {
             // If the URL pointed to a specific poll, go directly there.
@@ -156,17 +169,21 @@ export default function App() {
           }
           cleanUrl();
           return;
-        } catch {
+        } catch (err) {
+          console.warn('[bootstrap] session restore failed:', err);
           clearToken();
         }
       }
 
       cleanUrl();
-
+      console.log('[bootstrap] done →', urlState.name);
       if (mounted) setScreen(urlState);
     };
 
-    bootstrap();
+    bootstrap().catch((err) => {
+      console.error('[bootstrap] fatal error:', err);
+      if (mounted) setScreen({ name: 'StandaloneAccess' });
+    });
 
     const subscription = Linking.addEventListener('url', ({ url }) => {
       setScreen(getStateFromUrl(url));

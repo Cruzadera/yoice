@@ -2,8 +2,11 @@ import axios from 'axios';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
-const envApiUrl = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env
-  ?.EXPO_PUBLIC_API_URL;
+// process.env.EXPO_PUBLIC_* is statically inlined by Babel at build time.
+// Do NOT access via globalThis.process — it won't be inlined.
+const envApiUrl = process.env.EXPO_PUBLIC_API_URL;
+
+const PRODUCTION_API_URL = 'https://votia.duckdns.org/api';
 
 const getExpoHost = () => {
   const constantsAny = Constants as any;
@@ -24,11 +27,11 @@ const getExpoHost = () => {
 };
 
 const detectedHost = getExpoHost();
-const fallbackHost = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
 const apiBaseUrl = envApiUrl
-  || (Platform.OS === 'web' ? '/api' : `http://${detectedHost || fallbackHost}:3001/api`);
+  || (Platform.OS === 'web' ? '/api' : (detectedHost ? `http://${detectedHost}:3001/api` : PRODUCTION_API_URL));
 
-console.log('[api] baseURL', apiBaseUrl);
+console.log('[api] envApiUrl:', envApiUrl);
+console.log('[api] baseURL:', apiBaseUrl);
 
 const api = axios.create({
   baseURL: apiBaseUrl,
