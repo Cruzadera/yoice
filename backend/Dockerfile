@@ -8,6 +8,7 @@ COPY backend/package*.json ./
 RUN npm ci
 
 COPY backend/ ./
+COPY data/ ./data/
 
 RUN npx prisma generate
 RUN npm run build

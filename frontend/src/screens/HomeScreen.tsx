@@ -12,24 +12,24 @@ const HomeScreen: React.FC<Props> = ({ onStandaloneAccess }) => {
     <AppShell
       eyebrow="Acceso"
       title="Una app, dos entradas"
-      subtitle="Mantenemos el flujo llamado desde WhatsApp y añadimos un acceso standalone para abrir la misma encuesta sin duplicar producto."
+      subtitle="Mantenemos el flujo de WhatsApp y añadimos acceso por email para entrar sin depender de mensajes privados del bot."
     >
       <View style={styles.infoCard}>
         <Text style={styles.infoTitle}>Modo WhatsApp</Text>
         <Text style={styles.infoText}>
-          El bot envía un enlace con `token` y `pollId`, y la app entra directa al onboarding o a la encuesta.
+          El bot puede compartir el enlace del grupo. Si no tienes sesión, la app te pedirá autenticarte.
         </Text>
       </View>
 
       <View style={styles.infoCard}>
-        <Text style={styles.infoTitle}>Modo Standalone</Text>
+        <Text style={styles.infoTitle}>Modo Email</Text>
         <Text style={styles.infoText}>
-          La app pide teléfono, nombre opcional y `pollId`, genera el mismo token interno y reutiliza el mismo backend.
+          Introduces tu correo y recibes un magic link para entrar sin contraseña.
         </Text>
       </View>
 
       <PrimaryButton
-        title="Entrar en modo standalone"
+        title="Entrar con email"
         onPress={onStandaloneAccess}
       />
     </AppShell>

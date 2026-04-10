@@ -23,11 +23,12 @@ type Props = {
   avatarImage?: string | null;
   onResults: (poll: PollResponse) => void;
   onProfile: () => void;
+  onGroupList?: () => void;
 };
 
 const COLORS = ['#ffb703', '#ff6b6b', '#4f6cff', '#20c997', '#6f42c1', '#fd7e14'];
 
-const PollScreen: React.FC<Props> = ({ token, pollId, userName, avatarColor, avatarImage, onResults, onProfile }) => {
+const PollScreen: React.FC<Props> = ({ token, pollId, userName, avatarColor, avatarImage, onResults, onProfile, onGroupList }) => {
   const [poll, setPoll] = useState<PollResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -82,7 +83,7 @@ const PollScreen: React.FC<Props> = ({ token, pollId, userName, avatarColor, ava
   };
 
   const voteLocked = !!poll?.userVote || !!poll?.expired;
-  const visibleOptions = poll?.options.filter((option) => option.label !== userName) || [];
+  const visibleOptions = poll?.options.filter((option) => option.userId !== poll.currentUserId) || [];
 
   return (
     <AppShell
@@ -91,6 +92,11 @@ const PollScreen: React.FC<Props> = ({ token, pollId, userName, avatarColor, ava
       subtitle="Vota rápido y consulta cómo va la encuesta del grupo."
       headerAction={<ProfileIconButton name={userName} avatarColor={avatarColor} avatarImage={avatarImage} onPress={onProfile} />}
     >
+      {onGroupList ? (
+        <Pressable onPress={onGroupList} style={styles.backLink}>
+          <Text style={styles.backLinkText}>{"← Mis grupos"}</Text>
+        </Pressable>
+      ) : null}
       {loading || !poll ? (
         <View style={styles.loaderBox}>
           <ActivityIndicator size="large" color="#4f6cff" />
@@ -131,7 +137,7 @@ const PollScreen: React.FC<Props> = ({ token, pollId, userName, avatarColor, ava
                         uri: getAvatarUri({
                           name: option.label,
                           avatarImage: option.user.avatarImage,
-                          avatarColor: active ? color : option.user.avatarColor || color,
+                          avatarColor: option.user.avatarColor,
                           color: active ? 'ffffff' : color
                         })
                       }}
@@ -169,6 +175,14 @@ const PollScreen: React.FC<Props> = ({ token, pollId, userName, avatarColor, ava
 };
 
 const styles = StyleSheet.create({
+  backLink: {
+    marginBottom: 12,
+  },
+  backLinkText: {
+    color: '#4f6cff',
+    fontSize: 14,
+    fontWeight: '500',
+  },
   loaderBox: {
     padding: 18,
     borderRadius: 24,

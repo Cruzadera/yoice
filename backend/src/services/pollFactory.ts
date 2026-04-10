@@ -1,4 +1,50 @@
 import prisma from './db';
+import { readFile } from 'fs/promises';
+import path from 'path';
+
+export type PollSource = 'whatsapp' | 'web';
+
+type QuestionSeedItem = {
+  id: string;
+  texto: string;
+  categoria: string;
+  tipoSeleccion: 'single' | 'multiple';
+  nsfw: boolean;
+  activa: boolean;
+};
+
+const loadQuestionsFromFile = async () => {
+  const filePath = path.resolve(process.cwd(), 'data/questions.json');
+  const raw = await readFile(filePath, 'utf8');
+  const items = JSON.parse(raw) as QuestionSeedItem[];
+
+  return items.map((item) => ({
+    id: item.id,
+    text: item.texto,
+    category: item.categoria,
+    selectionType: item.tipoSeleccion,
+    nsfw: item.nsfw,
+    active: item.activa,
+  }));
+};
+
+const ensureQuestionPool = async () => {
+  const count = await prisma.question.count({ where: { active: true } });
+  if (count > 0) {
+    return;
+  }
+
+  const questions = await loadQuestionsFromFile();
+
+  if (questions.length === 0) {
+    throw new Error('No hay preguntas disponibles en data/questions.json');
+  }
+
+  await prisma.question.createMany({
+    data: questions,
+    skipDuplicates: true,
+  });
+};
 
 const startOfToday = () => {
   const today = new Date();
@@ -91,6 +137,8 @@ const syncPollOptions = async (pollId: string, groupId?: string) => {
 };
 
 export const createPollFromActiveQuestion = async (groupId?: string) => {
+  await ensureQuestionPool();
+
   const activeQuestionCount = await prisma.question.count({
     where: { active: true }
   });
@@ -110,10 +158,6 @@ export const createPollFromActiveQuestion = async (groupId?: string) => {
   }
 
   const users = await getEligibleUsersForPoll(groupId);
-
-  if (users.length === 0) {
-    throw new Error('No hay usuarios con nombre para generar opciones dinámicas');
-  }
 
   const poll = await prisma.poll.create({
     data: {
@@ -165,36 +209,39 @@ export const ensureDailyPoll = async () => {
 };
 
 export const ensureDailyPollForGroup = async (groupId: string) => {
-  const memberCount = await prisma.groupMember.count({
-    where: { groupId }
-  });
+  return resolveDailyPollForGroupBySource(groupId, 'whatsapp');
+};
 
-  if (memberCount < 2) {
-    return null;
-  }
-
+export const resolveDailyPollForGroupBySource = async (
+  groupId: string,
+  source: PollSource,
+) => {
   const existingPoll = await prisma.poll.findFirst({
     where: {
       groupId,
       createdAt: {
         gte: startOfToday(),
-        lte: endOfToday()
-      }
+        lte: endOfToday(),
+      },
     },
     include: {
       question: true,
       options: {
         include: {
-          user: true
-        }
-      }
+          user: true,
+        },
+      },
     },
-    orderBy: { createdAt: 'desc' }
+    orderBy: { createdAt: 'desc' },
   });
 
   if (existingPoll) {
     return syncPollOptions(existingPoll.id, groupId);
   }
 
-  return createPollFromActiveQuestion(groupId);
+  if (source === 'whatsapp') {
+    return createPollFromActiveQuestion(groupId);
+  }
+
+  return null;
 };

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../services/db';
-import { ensureDailyPollForGroup } from '../services/pollFactory';
+import { resolveDailyPollForGroupBySource } from '../services/pollFactory';
 
 const createInviteCode = () => Math.random().toString(36).slice(2, 8).toUpperCase();
 
@@ -93,7 +93,7 @@ export const listUserGroupsHandler = async (req: Request, res: Response) => {
         name: group.name,
         inviteCode: group.inviteCode,
         memberCount,
-        pollReady: memberCount >= 2,
+        pollReady: !!poll,
         poll
       };
     });
@@ -176,9 +176,10 @@ export const joinGroupHandler = async (req: Request, res: Response) => {
       where: { groupId: group.id }
     });
 
-    const poll = memberCount >= 2 ? await ensureDailyPollForGroup(group.id) : null;
+    // Web/app flow must not auto-create polls.
+    const poll = await resolveDailyPollForGroupBySource(group.id, 'web');
 
-    return res.json({ group, poll, memberCount, pollReady: memberCount >= 2 });
+    return res.json({ group, poll, memberCount, pollReady: !!poll });
   } catch (error) {
     return res.status(500).json({ message: 'Error al unirse al grupo', error });
   }

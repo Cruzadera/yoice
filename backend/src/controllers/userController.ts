@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../services/db';
+import { pickRandomAvatarColor } from '../utils/avatarColor';
 
 export const getCurrentUserHandler = async (req: Request, res: Response) => {
   if (!req.auth) {
@@ -9,6 +10,15 @@ export const getCurrentUserHandler = async (req: Request, res: Response) => {
   const user = await prisma.user.findUnique({
     where: { id: req.auth.user.id }
   });
+
+  if (user && !user.avatarColor) {
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: { avatarColor: pickRandomAvatarColor() }
+    });
+
+    return res.json(updatedUser);
+  }
 
   return res.json(user);
 };
@@ -25,9 +35,17 @@ export const updateUserNameHandler = async (req: Request, res: Response) => {
   }
 
   try {
+    const currentUser = await prisma.user.findUnique({
+      where: { id: req.auth.user.id },
+      select: { avatarColor: true }
+    });
+
     const user = await prisma.user.update({
       where: { id: req.auth.user.id },
-      data: { name }
+      data: {
+        name,
+        ...(currentUser?.avatarColor ? {} : { avatarColor: pickRandomAvatarColor() })
+      }
     });
 
     return res.json(user);

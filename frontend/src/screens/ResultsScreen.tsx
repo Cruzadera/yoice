@@ -41,7 +41,7 @@ const ResultsScreen: React.FC<Props> = ({ poll, userName, avatarColor, avatarIma
               avatar: getAvatarUri({
                 name: voter.name,
                 avatarImage: voter.avatarImage,
-                avatarColor: voter.avatarColor || color,
+                avatarColor: voter.avatarColor,
                 color: 'ffffff',
                 size: 72
               })
@@ -56,7 +56,7 @@ const ResultsScreen: React.FC<Props> = ({ poll, userName, avatarColor, avatarIma
                         uri: getAvatarUri({
                           name: result.label,
                           avatarImage: result.avatarImage,
-                          avatarColor: result.avatarColor || color,
+                          avatarColor: result.avatarColor,
                           color: 'ffffff'
                         })
                       }}

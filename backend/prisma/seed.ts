@@ -14,7 +14,7 @@ type QuestionSeedItem = {
 const prisma = new PrismaClient();
 
 const loadQuestions = async () => {
-  const filePath = path.resolve(__dirname, '../../data/questions.json');
+  const filePath = path.resolve(__dirname, '../data/questions.json');
   const raw = await readFile(filePath, 'utf8');
   const items = JSON.parse(raw) as QuestionSeedItem[];
 

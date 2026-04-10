@@ -128,6 +128,7 @@ export const getPollHandler = async (req: Request, res: Response) => {
 
     return res.json({
       id: poll.id,
+      currentUserId: req.auth.user.id,
       question: poll.question.text,
       questionMeta: {
         id: poll.question.id,

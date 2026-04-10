@@ -2,8 +2,11 @@ import axios from 'axios';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
-const envApiUrl = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env
-  ?.EXPO_PUBLIC_API_URL;
+// process.env.EXPO_PUBLIC_* is statically inlined by Babel at build time.
+// Do NOT access via globalThis.process — it won't be inlined.
+const envApiUrl = process.env.EXPO_PUBLIC_API_URL;
+
+const PRODUCTION_API_URL = 'https://votia.duckdns.org/api';
 
 const getExpoHost = () => {
   const constantsAny = Constants as any;
@@ -24,10 +27,11 @@ const getExpoHost = () => {
 };
 
 const detectedHost = getExpoHost();
-const fallbackHost = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
-const apiBaseUrl = envApiUrl || `http://${detectedHost || fallbackHost}:3001/api`;
+const apiBaseUrl = envApiUrl
+  || (Platform.OS === 'web' ? '/api' : (detectedHost ? `http://${detectedHost}:3001/api` : PRODUCTION_API_URL));
 
-console.log('[api] baseURL', apiBaseUrl);
+console.log('[api] envApiUrl:', envApiUrl);
+console.log('[api] baseURL:', apiBaseUrl);
 
 const api = axios.create({
   baseURL: apiBaseUrl,
@@ -42,6 +46,7 @@ const authHeaders = (token: string) => ({
 
 export type PollResponse = {
   id: string;
+  currentUserId: string;
   question: string;
   questionMeta: {
     id: string;
@@ -106,10 +111,14 @@ export type AccessResponse = {
   pollId: string | null;
 };
 
-export type StandaloneAccessResponse = {
-  nextStep: 'groupLobby';
-  token: string;
-  user: {
+export type EmailLoginStartResponse = {
+  ok: boolean;
+  message: string;
+  debugLoginUrl?: string;
+  directLogin?: boolean;
+  token?: string;
+  pollId?: string | null;
+  user?: {
     id: string;
     authKey: string | null;
     name: string | null;
@@ -157,12 +166,14 @@ export type GroupListResponse = {
 };
 
 export default {
-  authenticateWhatsapp: (token: string, pollId: string, waGroupId?: string, waGroupName?: string) =>
+  authenticateWhatsapp: (token: string, pollId?: string, waGroupId?: string, waGroupName?: string) =>
     api.get<AccessResponse>('/auth/whatsapp', {
-      params: { token, pollId, waGroupId, waGroupName }
+      params: { token, ...(pollId ? { pollId } : {}), waGroupId, waGroupName }
     }),
-  loginStandalone: (payload: { name: string }) =>
-    api.post<StandaloneAccessResponse>('/auth/standalone', payload),
+  startWhatsappAccess: (payload: { name: string; pollId?: string; waGroupId?: string; waGroupName?: string }) =>
+    api.post<AccessResponse>('/auth/whatsapp', payload),
+  startEmailLogin: (payload: { email: string; pollId?: string; waGroupId?: string; waGroupName?: string }) =>
+    api.post<EmailLoginStartResponse>('/auth/email/start', payload),
   getMe: (token: string) => api.get<UserProfileResponse>('/user/me', authHeaders(token)),
   saveUserName: (token: string, name: string) =>
     api.post('/user/name', { name }, authHeaders(token)),

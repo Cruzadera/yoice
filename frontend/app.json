@@ -1,18 +1,36 @@
 {
   "expo": {
-    "name": "AskUs Daily",
-    "slug": "askus-daily",
+    "name": "Votia",
+    "slug": "votia",
     "version": "1.0.0",
-    "scheme": "askusdaily",
-    "platforms": ["android", "ios", "web"],
+    "scheme": "votia",
+    "icon": "./assets/icon.png",
+    "platforms": [
+      "android",
+      "ios",
+      "web"
+    ],
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "updates": {
       "fallbackToCacheTimeout": 0
     },
-    "assetBundlePatterns": ["**/*"],
-    "ios": {"supportsTablet": true},
-    "android": {},
-    "web": {}
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.cruzadera.votia"
+    },
+    "web": {
+      "favicon": "./assets/icon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "94fce180-e0ac-4921-9e05-7f0f394ae3c5"
+      }
+    }
   }
 }

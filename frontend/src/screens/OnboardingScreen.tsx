@@ -49,12 +49,12 @@ const OnboardingScreen: React.FC<Props> = ({ token, pollId, identityLabel, onGro
   return (
     <AppShell
       eyebrow="Primer acceso"
-      title="Solo nos falta tu nombre"
-      subtitle="Guardamos este dato en PostgreSQL con Prisma para que el siguiente acceso desde WhatsApp sea directo."
+      title="¿Cómo te llamas?"
+      subtitle="Así te verán los demás en las encuestas."
     >
       <View style={styles.phonePill}>
-        <Text style={styles.phoneLabel}>Acceso validado</Text>
-        <Text style={styles.phoneValue}>{identityLabel}</Text>
+        <Text style={styles.phoneLabel}>Estado</Text>
+        <Text style={styles.phoneValue}>✓ Acceso verificado</Text>
       </View>
 
       <FieldInput

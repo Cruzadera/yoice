@@ -25,8 +25,8 @@ const AuthCallbackScreen: React.FC<Props> = ({ token = '', pollId = '', waGroupI
 
   useEffect(() => {
     const bootstrap = async () => {
-      if (!token || !pollId) {
-        setErrorMessage('El enlace no incluye token o pollId. Revisa el enlace que llega por WhatsApp.');
+      if (!token) {
+        setErrorMessage('El enlace no es válido. Pide uno nuevo.');
         setLoading(false);
         return;
       }
@@ -51,7 +51,7 @@ const AuthCallbackScreen: React.FC<Props> = ({ token = '', pollId = '', waGroupI
         });
       } catch (error) {
         console.error('Error en autologin', error);
-        setErrorMessage('No pudimos validar el acceso automático. Pide un enlace nuevo o revisa el token.');
+        setErrorMessage('No pudimos completar el acceso. Pide un enlace nuevo.');
       } finally {
         setLoading(false);
       }
@@ -62,15 +62,14 @@ const AuthCallbackScreen: React.FC<Props> = ({ token = '', pollId = '', waGroupI
 
   return (
     <AppShell
-      eyebrow="Autologin"
-      title="Entrando en tu encuesta"
-      subtitle="Validamos el enlace de WhatsApp y te llevamos al siguiente paso sin login manual."
+      eyebrow="Acceso"
+      title="Entrando…"
     >
       <View style={styles.statusCard}>
         {loading ? (
           <>
             <ActivityIndicator size="large" color="#4f6cff" />
-            <Text style={styles.message}>Conectando con el backend y recuperando tu acceso…</Text>
+            <Text style={styles.message}>Un momento…</Text>
           </>
         ) : (
           <>
@@ -78,7 +77,7 @@ const AuthCallbackScreen: React.FC<Props> = ({ token = '', pollId = '', waGroupI
             <Text style={styles.message}>{errorMessage}</Text>
             <PrimaryButton title="Reintentar" onPress={() => window.location.reload()} />
             <PrimaryButton
-              title="Ir al modo standalone"
+              title="Entrar con email"
               onPress={onStandaloneFallback}
               variant="secondary"
               style={styles.secondaryButton}
