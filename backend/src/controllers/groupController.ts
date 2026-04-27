@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../services/db';
-import { resolveDailyPollForGroupBySource } from '../services/pollFactory';
+import { ensureDailyPollForGroup } from '../services/pollFactory';
 
 const createInviteCode = () => Math.random().toString(36).slice(2, 8).toUpperCase();
 
@@ -191,8 +191,7 @@ export const joinGroupHandler = async (req: Request, res: Response) => {
       where: { groupId: group.id }
     });
 
-    // Web/app flow must not auto-create polls.
-    const poll = await resolveDailyPollForGroupBySource(group.id, 'web');
+    const poll = await ensureDailyPollForGroup(group.id);
 
     return res.json({ group, poll, memberCount, pollReady: !!poll });
   } catch (error) {

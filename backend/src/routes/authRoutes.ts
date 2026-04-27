@@ -3,14 +3,12 @@ import {
 	standaloneLoginHandler,
 	startEmailLoginHandler,
 	verifyEmailLoginHandler,
-	whatsappStartHandler,
-	whatsappAutologinHandler
+	autologinHandler
 } from '../controllers/authController';
 
 const router = Router();
 
-router.get('/whatsapp', whatsappAutologinHandler);
-router.post('/whatsapp', whatsappStartHandler);
+router.get('/autologin', autologinHandler);
 router.post('/standalone', standaloneLoginHandler);
 router.post('/email/start', startEmailLoginHandler);
 router.get('/email/verify', verifyEmailLoginHandler);

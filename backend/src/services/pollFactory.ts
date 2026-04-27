@@ -3,8 +3,6 @@ import { readFile } from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 
-export type PollSource = 'whatsapp' | 'web';
-
 type QuestionSeedItem = {
   id: string;
   texto: string;
@@ -183,7 +181,7 @@ export const createPollFromActiveQuestion = async (groupId?: string) => {
         create: users.map((user) => ({
           userId: user.id,
           questionId: question.id,
-          text: user.name || user.phone || 'Participante'
+          text: user.name || 'Participante'
         }))
       }
     },
@@ -227,13 +225,6 @@ export const ensureDailyPoll = async () => {
 };
 
 export const ensureDailyPollForGroup = async (groupId: string) => {
-  return resolveDailyPollForGroupBySource(groupId, 'whatsapp');
-};
-
-export const resolveDailyPollForGroupBySource = async (
-  groupId: string,
-  source: PollSource,
-) => {
   const existingPoll = await prisma.poll.findFirst({
     where: {
       groupId,
@@ -257,9 +248,5 @@ export const resolveDailyPollForGroupBySource = async (
     return syncPollOptions(existingPoll.id, groupId);
   }
 
-  if (source === 'whatsapp') {
-    return createPollFromActiveQuestion(groupId);
-  }
-
-  return null;
+  return createPollFromActiveQuestion(groupId);
 };

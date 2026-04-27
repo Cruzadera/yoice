@@ -7,10 +7,10 @@ Aplicación de encuestas con:
 
 ## Flujo actual
 
-1. El usuario abre un enlace de WhatsApp con formato `/auth/whatsapp?token=XYZ&pollId=abc123`.
-2. El frontend llama al backend para validar el token.
+1. El usuario abre un enlace de acceso con formato `/auth/autologin?token=XYZ&pollId=abc123` o entra desde la app.
+2. El frontend valida el token y restaura la sesión del usuario.
 3. Si el usuario no tiene nombre, entra en `/onboarding`.
-4. Si ya está completo, entra directamente en `/poll/{pollId}`.
+4. Si ya está completo, entra directamente en `/poll/{pollId}` o en su lista de grupos.
 5. El voto se guarda en PostgreSQL usando Prisma y se bloquean duplicados con `@@unique([pollId, userId])`.
 
 ## Modelo de datos
@@ -23,8 +23,8 @@ Aplicación de encuestas con:
 Tambien existe una entrada standalone desde la propia app:
 
 1. El usuario abre la app sin enlace.
-2. Introduce `phone`, `name` opcional y `pollId`.
-3. El backend genera el mismo token interno y redirige al mismo flujo de onboarding o encuesta.
+2. Introduce su email y, si aplica, el `pollId`.
+3. El backend genera el mismo token interno y redirige al mismo flujo de onboarding, grupos o encuesta.
 
 ## Variables de entorno
 
@@ -70,8 +70,8 @@ npm run start
 
 ## Endpoints principales
 
-- `GET /auth/whatsapp?token=...&pollId=...`
-- `GET /api/auth/whatsapp?token=...&pollId=...`
+- `GET /auth/autologin?token=...&pollId=...`
+- `GET /api/auth/autologin?token=...&pollId=...`
 - `POST /api/auth/standalone`
 - `POST /api/user/name`
 - `GET /api/user/me`
