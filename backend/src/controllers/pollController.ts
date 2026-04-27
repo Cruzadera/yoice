@@ -77,18 +77,33 @@ const buildResults = (
   return Array.from(ranking.values()).sort((left, right) => right.votes - left.votes);
 };
 
-export const getPollHandler = async (req: Request, res: Response) => {
-  if (!req.auth) {
-    return res.status(401).json({ message: 'Usuario no autenticado' });
-  }
+const hasGroupMembership = async (groupId: string, userId: string) => {
+  const membership = await prisma.groupMember.findUnique({
+    where: {
+      groupId_userId: {
+        groupId,
+        userId
+      }
+    },
+    select: {
+      id: true
+    }
+  });
 
+  return !!membership;
+};
+
+export const getPollHandler = async (req: Request, res: Response) => {
   try {
     const poll = await prisma.poll.findUnique({
       where: { id: req.params.pollId },
       include: {
         question: true,
+        group: true,
         options: {
-          include: {
+          select: {
+            id: true,
+            text: true,
             user: {
               select: {
                 id: true,
@@ -124,12 +139,31 @@ export const getPollHandler = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Encuesta no encontrada' });
     }
 
-    const userVote = poll.votes.find((vote) => vote.userId === req.auth?.user.id) ?? null;
+    const currentUserId = req.auth?.user.id ?? null;
+    const isMember = poll.groupId && currentUserId
+      ? await hasGroupMembership(poll.groupId, currentUserId)
+      : !!currentUserId;
+    const visibility = poll.group?.visibility ?? 'PRIVATE';
+    const canSeeFullPoll = !poll.groupId || isMember || visibility === 'PRIVATE';
+    const canSeeQuestion = canSeeFullPoll || visibility === 'PUBLIC_QUESTION' || visibility === 'PUBLIC_RESULTS';
+    const canSeeResults = canSeeFullPoll || visibility === 'PUBLIC_RESULTS';
+
+    if (poll.groupId && !isMember && visibility === 'PRIVATE') {
+      return res.status(403).json({ message: 'Este grupo es privado' });
+    }
+
+    const userVote = currentUserId
+      ? poll.votes.find((vote) => vote.userId === currentUserId) ?? null
+      : null;
+    const results = buildResults(poll.options, poll.votes);
+    const publicResults = results.map(({ voters: _voters, ...rest }) => rest);
 
     return res.json({
       id: poll.id,
-      currentUserId: req.auth.user.id,
-      question: poll.question.text,
+      currentUserId,
+      groupId: poll.groupId,
+      visibility,
+      question: canSeeQuestion ? poll.question.text : null,
       questionMeta: {
         id: poll.question.id,
         category: poll.question.category,
@@ -137,17 +171,21 @@ export const getPollHandler = async (req: Request, res: Response) => {
         nsfw: poll.question.nsfw,
         active: poll.question.active
       },
-      options: poll.options.map((option) => ({
-        id: option.id,
-        userId: option.user.id,
-        label: option.user.name || option.user.phone,
-        user: option.user
-      })),
+      options: canSeeFullPoll
+        ? poll.options.map((option) => ({
+            id: option.id,
+            userId: option.user.id,
+            label: option.text || option.user.name || option.user.phone,
+            user: option.user
+          }))
+        : [],
       expiresAt: poll.expiresAt,
       createdAt: poll.createdAt,
       expired: !!poll.expiresAt && poll.expiresAt.getTime() < Date.now(),
-      userVote,
-      results: buildResults(poll.options, poll.votes)
+      userVote: canSeeFullPoll ? userVote : null,
+      results: canSeeResults
+        ? (canSeeFullPoll ? results : publicResults)
+        : null
     });
   } catch (error) {
     return res.status(500).json({ message: 'Error al obtener la encuesta', error });

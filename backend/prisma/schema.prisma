@@ -18,6 +18,7 @@ model User {
   votes     Vote[]
   options   Option[]
   memberships GroupMember[]
+  createdGroups Group[] @relation("GroupCreatedBy")
   emailLoginTokens EmailLoginToken[]
   createdAt DateTime @default(now())
 }
@@ -41,19 +42,26 @@ model EmailLoginToken {
 }
 
 model Group {
-  id               String        @id @default(uuid())
-  name             String
-  inviteCode       String        @unique
-  whatsappGroupId  String?       @unique
-  memberships      GroupMember[]
-  polls            Poll[]
-  createdAt        DateTime      @default(now())
+  id              String          @id @default(uuid())
+  name            String
+  visibility      GroupVisibility @default(PRIVATE)
+  inviteCode      String          @unique
+  publicUrl       String?         @unique
+  actorId         String?         @unique
+  whatsappGroupId String?         @unique
+  createdById     String?
+  memberships     GroupMember[]
+  polls           Poll[]
+  questions       Question[]
+  createdBy       User?           @relation("GroupCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt       DateTime        @default(now())
 }
 
 model GroupMember {
   id        String   @id @default(uuid())
   groupId   String
   userId    String
+  role      GroupRole @default(MEMBER)
   createdAt DateTime @default(now())
 
   group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
@@ -64,15 +72,22 @@ model GroupMember {
 }
 
 model Question {
-  id            String   @id
+  id            String   @id @default(uuid())
   text          String
   category      String
   selectionType String
   nsfw          Boolean
   active        Boolean
+  groupId       String?
+  expiresAt     DateTime?
   createdAt     DateTime @default(now())
 
+  group Group? @relation(fields: [groupId], references: [id], onDelete: Cascade)
   polls Poll[]
+  options Option[]
+  votes   Vote[]
+
+  @@index([groupId])
 }
 
 model Poll {
@@ -95,14 +110,18 @@ model Option {
   id        String   @id @default(uuid())
   pollId    String
   userId    String
+  questionId String?
+  text      String?
   createdAt DateTime @default(now())
 
   poll  Poll   @relation(fields: [pollId], references: [id], onDelete: Cascade)
   user  User   @relation(fields: [userId], references: [id])
+  question Question? @relation(fields: [questionId], references: [id], onDelete: Cascade)
   votes Vote[]
 
   @@unique([pollId, userId])
   @@index([pollId])
+  @@index([questionId])
 }
 
 model Vote {
@@ -110,13 +129,28 @@ model Vote {
   pollId    String
   userId    String
   optionId  String
+  questionId String?
   createdAt DateTime @default(now())
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   poll   Poll   @relation(fields: [pollId], references: [id], onDelete: Cascade)
   option  Option @relation(fields: [optionId], references: [id])
+  question Question? @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@unique([pollId, userId])
+  @@unique([questionId, userId])
   @@index([pollId])
   @@index([optionId])
+  @@index([questionId])
+}
+
+enum GroupVisibility {
+  PRIVATE
+  PUBLIC_QUESTION
+  PUBLIC_RESULTS
+}
+
+enum GroupRole {
+  ADMIN
+  MEMBER
 }
