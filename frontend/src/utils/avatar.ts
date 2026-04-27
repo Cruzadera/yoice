@@ -12,6 +12,8 @@ const pickColorFromSeed = (seed: string) => {
   return AVATAR_COLORS[colorIndex];
 };
 
+export const resolveAvatarColor = (name: string, avatarColor?: string | null) => avatarColor || pickColorFromSeed(name || 'U');
+
 export const getGeneratedAvatarUrl = (
   name: string,
   background = '4f6cff',
@@ -37,5 +39,5 @@ export const getAvatarUri = ({
     return avatarImage;
   }
 
-  return getGeneratedAvatarUrl(name, avatarColor || pickColorFromSeed(name || 'U'), color, size);
+  return getGeneratedAvatarUrl(name, resolveAvatarColor(name, avatarColor), color, size);
 };

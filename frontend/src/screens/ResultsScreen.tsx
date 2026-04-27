@@ -6,7 +6,7 @@ import PrimaryButton from '../components/ui/PrimaryButton';
 import { ResultVoter } from '../components/results/types';
 import ProfileIconButton from '../components/ui/ProfileIconButton';
 import { PollResponse } from '../services/api';
-import { getAvatarUri } from '../utils/avatar';
+import { getAvatarUri, resolveAvatarColor } from '../utils/avatar';
 
 type Props = {
   poll: PollResponse;
@@ -16,8 +16,6 @@ type Props = {
   onBack: () => void;
   onProfile: () => void;
 };
-
-const COLORS = ['#ffb703', '#ff6b6b', '#4f6cff', '#20c997', '#6f42c1', '#fd7e14'];
 
 const ResultsScreen: React.FC<Props> = ({ poll, userName, avatarColor, avatarImage, onBack, onProfile }) => {
   const results = poll.results.filter((result) => result.votes > 0);
@@ -32,8 +30,8 @@ const ResultsScreen: React.FC<Props> = ({ poll, userName, avatarColor, avatarIma
     >
       <ScrollView showsVerticalScrollIndicator={false}>
         {results.length > 0 ? (
-          results.map((result, index) => {
-            const color = COLORS[index % COLORS.length];
+          results.map((result) => {
+            const color = resolveAvatarColor(result.label, result.avatarColor);
             const percentage = maxVotes > 0 ? Math.max((result.votes / maxVotes) * 100, 14) : 0;
             const voters: ResultVoter[] = result.voters.map((voter) => ({
               id: `${result.optionId}-${voter.id}`,
