@@ -52,9 +52,9 @@ const OnboardingScreen: React.FC<Props> = ({ token, pollId, identityLabel, onGro
       title="¿Cómo te llamas?"
       subtitle="Así te verán los demás en las encuestas."
     >
-      <View style={styles.phonePill}>
-        <Text style={styles.phoneLabel}>Estado</Text>
-        <Text style={styles.phoneValue}>✓ Acceso verificado</Text>
+      <View style={styles.statusPill}>
+        <Text style={styles.statusLabel}>Estado</Text>
+        <Text style={styles.statusValue}>✓ Acceso verificado</Text>
       </View>
 
       <FieldInput
@@ -77,13 +77,13 @@ const OnboardingScreen: React.FC<Props> = ({ token, pollId, identityLabel, onGro
 };
 
 const styles = StyleSheet.create({
-  phonePill: {
+  statusPill: {
     padding: 16,
     borderRadius: 20,
     backgroundColor: '#eef2ff',
     marginBottom: 16
   },
-  phoneLabel: {
+  statusLabel: {
     fontSize: 12,
     fontWeight: '800',
     textTransform: 'uppercase',
@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
     color: '#607095',
     marginBottom: 6
   },
-  phoneValue: {
+  statusValue: {
     fontSize: 18,
     fontWeight: '800',
     color: '#15203a'

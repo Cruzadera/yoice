@@ -15,55 +15,14 @@ type AuthenticatedParams = {
 
 type Props = {
   pollId?: string;
-  waGroupId?: string;
-  waGroupName?: string;
   onAuthenticated?: (params: AuthenticatedParams) => void;
 };
 
-const StandaloneAccessScreen: React.FC<Props> = ({ pollId, waGroupId, waGroupName, onAuthenticated }) => {
-  const isWhatsAppFlow = !!waGroupId;
-
-  const [name, setName] = useState('');
+const StandaloneAccessScreen: React.FC<Props> = ({ pollId, onAuthenticated }) => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-
-  // ── WhatsApp flow: name only ──────────────────────────
-
-  const handleWhatsAppAccess = async () => {
-    if (!name.trim()) {
-      Alert.alert('Nombre requerido', 'Escribe tu nombre para continuar.');
-      return;
-    }
-
-    setErrorMessage('');
-    setLoading(true);
-
-    try {
-      const { data } = await api.startWhatsappAccess({
-        name: name.trim(),
-        ...(pollId ? { pollId } : {}),
-        ...(waGroupId ? { waGroupId } : {}),
-        ...(waGroupName ? { waGroupName } : {}),
-      });
-
-      onAuthenticated?.({
-        token: data.token,
-        pollId: data.pollId || pollId,
-        userName: data.user.name,
-        avatarColor: data.user.avatarColor,
-        avatarImage: data.user.avatarImage,
-      });
-    } catch (error: any) {
-      const message = error?.response?.data?.message || error?.message || 'No se pudo entrar.';
-      setErrorMessage(message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ── Email flow ────────────────────────────────────────
 
   const handleEmailAccess = async () => {
     const normalizedEmail = email.trim().toLowerCase();
@@ -79,7 +38,7 @@ const StandaloneAccessScreen: React.FC<Props> = ({ pollId, waGroupId, waGroupNam
     try {
       const { data } = await api.startEmailLogin({
         email: normalizedEmail,
-        ...(pollId ? { pollId } : {}),
+        ...(pollId ? { pollId } : {})
       });
 
       if (data.directLogin && data.token) {
@@ -102,39 +61,11 @@ const StandaloneAccessScreen: React.FC<Props> = ({ pollId, waGroupId, waGroupNam
     }
   };
 
-  // ── Render ────────────────────────────────────────────
-
-  if (isWhatsAppFlow) {
-    return (
-      <AppShell
-        eyebrow="Acceso"
-        title="Entrar en Votia"
-        subtitle={waGroupName ? `Vienes del grupo "${decodeURIComponent(waGroupName)}"` : 'Acceso desde WhatsApp'}
-      >
-        <FieldInput
-          label="Tu nombre"
-          placeholder="Ej. María"
-          value={name}
-          onChangeText={setName}
-          autoCapitalize="words"
-          autoCorrect={false}
-        />
-        {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-        <PrimaryButton
-          title={loading ? 'Entrando...' : 'Entrar'}
-          onPress={handleWhatsAppAccess}
-          loading={loading}
-          disabled={!name.trim()}
-        />
-      </AppShell>
-    );
-  }
-
   return (
     <AppShell
       eyebrow="Acceso"
       title="Entrar en Votia"
-      subtitle="Te enviamos un enlace al correo para acceder."
+      subtitle="Te enviamos un enlace al correo para entrar y continuar con tus grupos."
     >
       <FieldInput
         label="Email"

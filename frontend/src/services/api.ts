@@ -62,7 +62,6 @@ export type PollResponse = {
     user: {
       id: string;
       name: string | null;
-      phone: string | null;
       avatarColor: string | null;
       avatarImage: string | null;
     };
@@ -106,7 +105,6 @@ export type AccessResponse = {
     id: string;
     name: string;
     inviteCode: string;
-    whatsappGroupId: string | null;
   }>;
   pollId: string | null;
 };
@@ -166,13 +164,11 @@ export type GroupListResponse = {
 };
 
 export default {
-  authenticateWhatsapp: (token: string, pollId?: string, waGroupId?: string, waGroupName?: string) =>
-    api.get<AccessResponse>('/auth/whatsapp', {
-      params: { token, ...(pollId ? { pollId } : {}), waGroupId, waGroupName }
+  authenticateAutologin: (token: string, pollId?: string) =>
+    api.get<AccessResponse>('/auth/autologin', {
+      params: { token, ...(pollId ? { pollId } : {}) }
     }),
-  startWhatsappAccess: (payload: { name: string; pollId?: string; waGroupId?: string; waGroupName?: string }) =>
-    api.post<AccessResponse>('/auth/whatsapp', payload),
-  startEmailLogin: (payload: { email: string; pollId?: string; waGroupId?: string; waGroupName?: string }) =>
+  startEmailLogin: (payload: { email: string; pollId?: string }) =>
     api.post<EmailLoginStartResponse>('/auth/email/start', payload),
   getMe: (token: string) => api.get<UserProfileResponse>('/user/me', authHeaders(token)),
   saveUserName: (token: string, name: string) =>

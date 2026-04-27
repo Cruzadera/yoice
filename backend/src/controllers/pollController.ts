@@ -7,7 +7,6 @@ const buildResults = (
     user: {
       id: string;
       name: string | null;
-      phone: string | null;
       avatarColor: string | null;
       avatarImage: string | null;
     };
@@ -17,7 +16,6 @@ const buildResults = (
     user: {
       id: string;
       name: string | null;
-      phone: string | null;
       avatarColor: string | null;
       avatarImage: string | null;
     };
@@ -44,7 +42,7 @@ const buildResults = (
   for (const option of options) {
     ranking.set(option.id, {
       optionId: option.id,
-      label: option.user.name || option.user.phone || 'Participante',
+      label: option.user.name || 'Participante',
       userId: option.user.id,
       avatarColor: option.user.avatarColor,
       avatarImage: option.user.avatarImage,
@@ -67,7 +65,7 @@ const buildResults = (
     current.votes += 1;
     current.voters.push({
       id: vote.user.id,
-      name: vote.user.name || vote.user.phone || 'Participante',
+      name: vote.user.name || 'Participante',
       avatarColor: vote.user.avatarColor,
       avatarImage: vote.user.avatarImage
     });
@@ -108,7 +106,6 @@ export const getPollHandler = async (req: Request, res: Response) => {
               select: {
                 id: true,
                 name: true,
-                phone: true,
                 avatarColor: true,
                 avatarImage: true
               }
@@ -124,7 +121,6 @@ export const getPollHandler = async (req: Request, res: Response) => {
               select: {
                 id: true,
                 name: true,
-                phone: true,
                 avatarColor: true,
                 avatarImage: true
               }
@@ -175,7 +171,7 @@ export const getPollHandler = async (req: Request, res: Response) => {
         ? poll.options.map((option) => ({
             id: option.id,
             userId: option.user.id,
-            label: option.text || option.user.name || option.user.phone,
+            label: option.text || option.user.name || 'Participante',
             user: option.user
           }))
         : [],

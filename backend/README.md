@@ -1,6 +1,6 @@
 # Votia Backend
 
-Backend Express preparado para autologin desde WhatsApp, Prisma y PostgreSQL.
+Backend Express preparado para autologin genérico, Prisma y PostgreSQL.
 
 ## Configuración
 
@@ -30,8 +30,8 @@ npm run start
 
 ## Endpoints
 
-- `GET /auth/whatsapp?token=...&pollId=...`
-- `GET /api/auth/whatsapp?token=...&pollId=...`
+- `GET /auth/autologin?token=...&pollId=...`
+- `GET /api/auth/autologin?token=...&pollId=...`
 - `POST /api/auth/standalone`
 - `GET /api/user/me`
 - `POST /api/user/name`

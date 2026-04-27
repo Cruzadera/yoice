@@ -11,7 +11,6 @@ model User {
   id        String   @id @default(uuid())
   authKey   String?  @unique
   email     String?  @unique
-  phone     String?  @unique
   name      String?
   avatarColor String?
   avatarImage String?
@@ -28,8 +27,6 @@ model EmailLoginToken {
   email       String
   tokenHash   String   @unique
   pollId      String?
-  waGroupId   String?
-  waGroupName String?
   expiresAt   DateTime
   usedAt      DateTime?
   createdAt   DateTime @default(now())
@@ -48,7 +45,6 @@ model Group {
   inviteCode      String          @unique
   publicUrl       String?         @unique
   actorId         String?         @unique
-  whatsappGroupId String?         @unique
   createdById     String?
   memberships     GroupMember[]
   polls           Poll[]
