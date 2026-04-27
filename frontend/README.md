@@ -1,9 +1,9 @@
 # Votia Frontend
 
-Frontend Expo adaptado a dos entradas:
+Frontend Expo adaptado a una entrada principal:
 
-- `home -> standalone -> onboarding|poll`
-- `/auth/whatsapp -> onboarding|poll`
+- `home -> standalone -> onboarding|groupList|poll`
+- `/auth/autologin -> onboarding|groupList|poll`
 
 ## Configuración
 

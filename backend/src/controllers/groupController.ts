@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../services/db';
-import { resolveDailyPollForGroupBySource } from '../services/pollFactory';
+import { ensureDailyPollForGroup } from '../services/pollFactory';
 
 const createInviteCode = () => Math.random().toString(36).slice(2, 8).toUpperCase();
 
@@ -91,10 +91,15 @@ export const listUserGroupsHandler = async (req: Request, res: Response) => {
       return {
         id: group.id,
         name: group.name,
+        visibility: group.visibility,
         inviteCode: group.inviteCode,
+        publicUrl: group.publicUrl,
+        actorId: group.actorId,
+        createdById: group.createdById,
         memberCount,
         pollReady: !!poll,
-        poll
+        poll,
+        membershipRole: memberships.find((membership) => membership.group.id === group.id)?.role ?? 'MEMBER'
       };
     });
 
@@ -110,19 +115,29 @@ export const createGroupHandler = async (req: Request, res: Response) => {
   }
 
   const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+  const visibility = typeof req.body?.visibility === 'string' ? req.body.visibility.trim() : 'private';
 
   if (!name) {
     return res.status(400).json({ message: 'El nombre del grupo es obligatorio' });
   }
 
+  const normalizedVisibility: 'PRIVATE' | 'PUBLIC_QUESTION' | 'PUBLIC_RESULTS' = visibility === 'public_results'
+    ? 'PUBLIC_RESULTS'
+    : visibility === 'public_question'
+      ? 'PUBLIC_QUESTION'
+      : 'PRIVATE';
+
   try {
     const group = await prisma.group.create({
       data: {
         name,
+        visibility: normalizedVisibility,
         inviteCode: createInviteCode(),
+        createdById: req.auth.user.id,
         memberships: {
           create: {
-            userId: req.auth.user.id
+            userId: req.auth.user.id,
+            role: 'ADMIN'
           }
         }
       }
@@ -176,8 +191,7 @@ export const joinGroupHandler = async (req: Request, res: Response) => {
       where: { groupId: group.id }
     });
 
-    // Web/app flow must not auto-create polls.
-    const poll = await resolveDailyPollForGroupBySource(group.id, 'web');
+    const poll = await ensureDailyPollForGroup(group.id);
 
     return res.json({ group, poll, memberCount, pollReady: !!poll });
   } catch (error) {

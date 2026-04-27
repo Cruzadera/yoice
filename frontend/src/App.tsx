@@ -16,7 +16,7 @@ import { clearToken, loadToken, saveToken } from './utils/session';
 
 type ScreenState =
   | { name: 'Bootstrapping' }
-  | { name: 'StandaloneAccess'; pollId?: string; waGroupId?: string; waGroupName?: string }
+  | { name: 'StandaloneAccess'; pollId?: string }
   | { name: 'GroupList'; token: string; userName?: string | null; avatarColor?: string | null; avatarImage?: string | null }
   | {
       name: 'GroupLobby';
@@ -32,8 +32,8 @@ type ScreenState =
         pollReady: boolean;
       };
     }
-  | { name: 'EmailVerified'; token?: string; pollId?: string; waGroupId?: string; waGroupName?: string; email?: string }
-  | { name: 'AuthCallback'; token?: string; pollId?: string; waGroupId?: string; waGroupName?: string }
+  | { name: 'EmailVerified'; token?: string; pollId?: string; email?: string }
+  | { name: 'AuthCallback'; token?: string; pollId?: string }
   | { name: 'Onboarding'; token: string; pollId: string; identityLabel: string }
   | { name: 'Poll'; token: string; pollId: string; userName?: string | null; avatarColor?: string | null; avatarImage?: string | null }
   | { name: 'Results'; token: string; poll: PollResponse; userName?: string | null; avatarColor?: string | null; avatarImage?: string | null }
@@ -63,36 +63,28 @@ const getStateFromUrl = (rawUrl?: string | null): ScreenState => {
 
     const token = getParam('token');
     const pollId = getParam('pollId');
-    const waGroupId = getParam('waGroupId');
-    const waGroupName = getParam('waGroupName');
     const email = getParam('email');
 
     if (path === 'auth/email/verified' || rawUrl.includes('auth/email/verified')) {
-      return { name: 'EmailVerified', token, pollId, waGroupId, waGroupName, email };
+      return { name: 'EmailVerified', token, pollId, email };
     }
 
-    if (path === 'auth/whatsapp' || rawUrl.includes('auth/whatsapp')) {
-      return { name: 'AuthCallback', token, pollId, waGroupId, waGroupName };
+    if (path === 'auth/autologin' || rawUrl.includes('auth/autologin')) {
+      return { name: 'AuthCallback', token, pollId };
     }
 
     if (path === 'standalone') {
       return { name: 'StandaloneAccess' };
     }
 
-    // /g/{pollId} — short link from WhatsApp bot (group quick access, name only)
-    if (path.startsWith('g/')) {
-      const pollIdFromPath = path.replace('g/', '').split('?')[0];
-      return { name: 'StandaloneAccess', pollId: pollIdFromPath, waGroupId: 'whatsapp' };
-    }
-
     if (path.startsWith('poll/')) {
       const pollIdFromPath = path.replace('poll/', '').split('?')[0];
 
       if (token) {
-        return { name: 'AuthCallback', token, pollId: pollIdFromPath, waGroupId, waGroupName };
+        return { name: 'AuthCallback', token, pollId: pollIdFromPath };
       }
 
-      return { name: 'StandaloneAccess', pollId: pollIdFromPath, waGroupId, waGroupName };
+      return { name: 'StandaloneAccess', pollId: pollIdFromPath };
     }
 
     return { name: 'StandaloneAccess' };
@@ -206,8 +198,6 @@ export default function App() {
       {screen.name === 'StandaloneAccess' ? (
         <StandaloneAccessScreen
           pollId={screen.pollId}
-          waGroupId={screen.waGroupId}
-          waGroupName={screen.waGroupName}
           onAuthenticated={(params) => {
             saveToken(params.token);
             if (params.pollId) {
@@ -275,8 +265,6 @@ export default function App() {
         <AuthCallbackScreen
           token={screen.token}
           pollId={screen.pollId}
-          waGroupId={screen.waGroupId}
-          waGroupName={screen.waGroupName}
           onStandaloneFallback={() => setScreen({ name: 'StandaloneAccess' })}
           onOnboarding={(params) => setScreen({ name: 'Onboarding', ...params })}
           onGroupList={(params) => {
@@ -296,8 +284,6 @@ export default function App() {
               name: 'AuthCallback',
               token: screen.token,
               pollId: screen.pollId,
-              waGroupId: screen.waGroupId,
-              waGroupName: screen.waGroupName,
             })
           }
         />

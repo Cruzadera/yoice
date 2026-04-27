@@ -11,25 +11,25 @@ const HomeScreen: React.FC<Props> = ({ onStandaloneAccess }) => {
   return (
     <AppShell
       eyebrow="Acceso"
-      title="Una app, dos entradas"
-      subtitle="Mantenemos el flujo de WhatsApp y añadimos acceso por email para entrar sin depender de mensajes privados del bot."
+      title="Una app, una entrada"
+      subtitle="Entra por email y continúa directo a tus grupos y a la pregunta del día."
     >
       <View style={styles.infoCard}>
-        <Text style={styles.infoTitle}>Modo WhatsApp</Text>
+        <Text style={styles.infoTitle}>Acceso por email</Text>
         <Text style={styles.infoText}>
-          El bot puede compartir el enlace del grupo. Si no tienes sesión, la app te pedirá autenticarte.
+          Recibes un enlace temporal y retomas tu sesión sin depender de mensajería externa.
         </Text>
       </View>
 
       <View style={styles.infoCard}>
-        <Text style={styles.infoTitle}>Modo Email</Text>
+        <Text style={styles.infoTitle}>Experiencia de grupo</Text>
         <Text style={styles.infoText}>
-          Introduces tu correo y recibes un magic link para entrar sin contraseña.
+          Tu identidad, tus grupos y tus votos viven dentro de la app.
         </Text>
       </View>
 
       <PrimaryButton
-        title="Entrar con email"
+        title="Entrar"
         onPress={onStandaloneAccess}
       />
     </AppShell>

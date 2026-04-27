@@ -18,6 +18,7 @@ export const createVoteHandler = async (req: Request, res: Response) => {
     const poll = await prisma.poll.findUnique({
       where: { id: pollId },
       include: {
+        group: true,
         options: {
           select: {
             id: true,
@@ -29,6 +30,24 @@ export const createVoteHandler = async (req: Request, res: Response) => {
 
     if (!poll) {
       return res.status(404).json({ message: 'Encuesta no encontrada' });
+    }
+
+    if (poll.groupId) {
+      const membership = await prisma.groupMember.findUnique({
+        where: {
+          groupId_userId: {
+            groupId: poll.groupId,
+            userId: req.auth.user.id
+          }
+        },
+        select: {
+          id: true
+        }
+      });
+
+      if (!membership) {
+        return res.status(403).json({ message: 'Debes pertenecer al grupo para votar' });
+      }
     }
 
     if (poll.expiresAt && poll.expiresAt.getTime() < Date.now()) {
@@ -62,7 +81,8 @@ export const createVoteHandler = async (req: Request, res: Response) => {
       data: {
         pollId,
         userId: req.auth.user.id,
-        optionId
+        optionId,
+        questionId: poll.questionId
       }
     });
 

@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import crypto from 'crypto';
 import { readFile } from 'fs/promises';
 import path from 'path';
 
@@ -18,8 +19,23 @@ const loadQuestions = async () => {
   const raw = await readFile(filePath, 'utf8');
   const items = JSON.parse(raw) as QuestionSeedItem[];
 
+  const toStableUuid = (seed: string) => {
+    const hash = crypto.createHash('sha256').update(seed).digest();
+    hash[6] = (hash[6] & 0x0f) | 0x40;
+    hash[8] = (hash[8] & 0x3f) | 0x80;
+
+    const hex = hash.toString('hex').slice(0, 32);
+    return [
+      hex.slice(0, 8),
+      hex.slice(8, 12),
+      hex.slice(12, 16),
+      hex.slice(16, 20),
+      hex.slice(20, 32)
+    ].join('-');
+  };
+
   return items.map((item) => ({
-    id: item.id,
+    id: toStableUuid(item.id),
     text: item.texto,
     category: item.categoria,
     selectionType: item.tipoSeleccion,
