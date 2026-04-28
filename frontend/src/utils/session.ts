@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-const TOKEN_KEY = 'votia_auth_token';
+const TOKEN_KEY = 'yoice_auth_token';
 
 export const saveToken = (token: string): void => {
   if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {

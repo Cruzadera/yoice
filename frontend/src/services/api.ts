@@ -6,7 +6,7 @@ import { Platform } from 'react-native';
 // Do NOT access via globalThis.process — it won't be inlined.
 const envApiUrl = process.env.EXPO_PUBLIC_API_URL;
 
-const PRODUCTION_API_URL = 'https://votia.duckdns.org/api';
+const PRODUCTION_API_URL = 'https://yoice.duckdns.org/api';
 
 const getExpoHost = () => {
   const constantsAny = Constants as any;
