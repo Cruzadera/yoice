@@ -130,7 +130,7 @@ export default function App() {
       }
 
       // Try to restore a previously saved session.
-      const savedToken = loadToken();
+      const savedToken = await loadToken();
       if (savedToken) {
         try {
           console.log('[bootstrap] restoring session…');
@@ -163,7 +163,7 @@ export default function App() {
           return;
         } catch (err) {
           console.warn('[bootstrap] session restore failed:', err);
-          clearToken();
+          await clearToken();
         }
       }
 
@@ -199,7 +199,7 @@ export default function App() {
         <StandaloneAccessScreen
           pollId={screen.pollId}
           onAuthenticated={(params) => {
-            saveToken(params.token);
+            void saveToken(params.token);
             if (params.pollId) {
               setScreen({ name: 'Poll', token: params.token, pollId: params.pollId, userName: params.userName, avatarColor: params.avatarColor, avatarImage: params.avatarImage });
             } else {
@@ -268,7 +268,7 @@ export default function App() {
           onStandaloneFallback={() => setScreen({ name: 'StandaloneAccess' })}
           onOnboarding={(params) => setScreen({ name: 'Onboarding', ...params })}
           onGroupList={(params) => {
-            saveToken(params.token);
+            void saveToken(params.token);
             setScreen({ name: 'GroupList', ...params });
           }}
         />
@@ -295,7 +295,7 @@ export default function App() {
           pollId={screen.pollId}
           identityLabel={screen.identityLabel}
           onGroupList={(params) => {
-            saveToken(params.token);
+            void saveToken(params.token);
             setScreen({ name: 'GroupList', ...params });
           }}
         />

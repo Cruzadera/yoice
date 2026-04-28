@@ -34,7 +34,7 @@ const AuthCallbackScreen: React.FC<Props> = ({ token = '', pollId = '', onStanda
 
         if (data.nextStep === 'onboarding') {
           onOnboarding({
-            token,
+            token: data.token,
             pollId: data.pollId || pollId,
             identityLabel: 'Acceso verificado'
           });
@@ -42,14 +42,26 @@ const AuthCallbackScreen: React.FC<Props> = ({ token = '', pollId = '', onStanda
         }
 
         onGroupList({
-          token,
+          token: data.token,
           userName: data.user.name,
           avatarColor: data.user.avatarColor,
           avatarImage: data.user.avatarImage
         });
       } catch (error) {
-        console.error('Error en autologin', error);
-        setErrorMessage('No pudimos completar el acceso. Pide un enlace nuevo.');
+        try {
+          const { data } = await api.verifyMagicLink(token);
+          onGroupList({
+            token: data.token,
+            userName: data.user.name,
+            avatarColor: data.user.avatarColor,
+            avatarImage: data.user.avatarImage
+          });
+          return;
+        } catch (verifyError) {
+          console.error('Error en autologin', error);
+          console.error('Error verificando magic link', verifyError);
+          setErrorMessage('No pudimos completar el acceso. Pide un enlace nuevo.');
+        }
       } finally {
         setLoading(false);
       }

@@ -32,6 +32,8 @@ npm run start
 
 - `GET /auth/autologin?token=...&pollId=...`
 - `GET /api/auth/autologin?token=...&pollId=...`
+- `POST /auth/magic-link/verify`
+- `POST /api/auth/magic-link/verify`
 - `POST /api/auth/standalone`
 - `GET /api/user/me`
 - `POST /api/user/name`
