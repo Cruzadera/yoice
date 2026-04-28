@@ -1,8 +1,8 @@
-# Votia
+# Yoice
 
-Votia is a group-based social app where friends answer a daily question and vote together, turning everyday decisions into a shared experience.
+Yoice is a group-based social app where friends answer a daily question and vote together, turning everyday decisions into a shared experience.
 
-Instead of passive content, Votia focuses on **decisions** — simple, fast, and social.
+Instead of passive content, Yoice focuses on **decisions** — simple, fast, and social.
 
 ---
 
@@ -58,7 +58,7 @@ The app combines:
 File: `backend/.env`
 
 ```env
-DATABASE_URL="postgresql://user:password@host:5432/votia"
+DATABASE_URL="postgresql://user:password@host:5432/yoice"
 JWT_SECRET="change-this-secret"
 PORT=3001
 ```
@@ -162,7 +162,7 @@ Each group defines how its content is shared:
 
 ## 💡 Philosophy
 
-Votia is not a traditional social network.
+Yoice is not a traditional social network.
 
 It is designed around:
 

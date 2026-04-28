@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "Votia",
-    "slug": "votia",
+    "name": "Yoice",
+    "slug": "yoice",
     "version": "1.0.0",
-    "scheme": "votia",
+    "scheme": "yoice",
     "icon": "./assets/icon.png",
     "platforms": [
       "android",
@@ -22,7 +22,7 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.cruzadera.votia"
+      "package": "com.cruzadera.yoice"
     },
     "web": {
       "favicon": "./assets/icon.png"

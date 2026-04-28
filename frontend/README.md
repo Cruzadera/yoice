@@ -1,4 +1,4 @@
-# Votia Frontend
+# Yoice Frontend
 
 Frontend Expo adaptado a una entrada principal:
 
