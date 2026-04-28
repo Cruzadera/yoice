@@ -1,4 +1,4 @@
-# Votia Backend
+# Yoice Backend
 
 Backend Express preparado para autologin genérico, Prisma y PostgreSQL.
 

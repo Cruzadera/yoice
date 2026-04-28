@@ -64,7 +64,7 @@ const StandaloneAccessScreen: React.FC<Props> = ({ pollId, onAuthenticated }) =>
   return (
     <AppShell
       eyebrow="Acceso"
-      title="Entrar en Votia"
+      title="Entrar en Yoice"
       subtitle="Te enviamos un enlace al correo para entrar y continuar con tus grupos."
     >
       <FieldInput
