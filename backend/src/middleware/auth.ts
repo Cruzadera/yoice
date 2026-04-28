@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
-import prisma from '../services/db';
-import { deriveAuthKey, verifyAutologinToken } from '../utils/token';
+import { resolveSessionUser } from '../services/authSession';
+import { verifyAutologinToken } from '../utils/token';
 
 declare global {
   namespace Express {
@@ -11,6 +11,7 @@ declare global {
         user: {
           id: string;
           authKey: string | null;
+          email: string | null;
           name: string | null;
           avatarColor: string | null;
           avatarImage: string | null;
@@ -48,13 +49,7 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
     }
 
     const payload = verifyAutologinToken(token);
-    const authKey = deriveAuthKey(payload.sub);
-
-    const user = await prisma.user.upsert({
-      where: { authKey },
-      update: {},
-      create: { authKey }
-    });
+    const { authKey, user } = await resolveSessionUser(payload);
 
     req.auth = {
       token,

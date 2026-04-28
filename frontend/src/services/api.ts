@@ -96,6 +96,7 @@ export type AccessResponse = {
   user: {
     id: string;
     authKey: string | null;
+    email: string | null;
     name: string | null;
     avatarColor: string | null;
     avatarImage: string | null;
@@ -119,6 +120,7 @@ export type EmailLoginStartResponse = {
   user?: {
     id: string;
     authKey: string | null;
+    email: string | null;
     name: string | null;
     avatarColor: string | null;
     avatarImage: string | null;
@@ -129,10 +131,25 @@ export type EmailLoginStartResponse = {
 export type UserProfileResponse = {
   id: string;
   authKey: string | null;
+  email: string | null;
   name: string | null;
   avatarColor: string | null;
   avatarImage: string | null;
   createdAt: string;
+};
+
+export type MagicLinkVerifyResponse = {
+  token: string;
+  pollId: string | null;
+  user: {
+    id: string;
+    authKey: string | null;
+    email: string | null;
+    name: string | null;
+    avatarColor: string | null;
+    avatarImage: string | null;
+    createdAt: string;
+  };
 };
 
 export type GroupAccessResponse = {
@@ -168,6 +185,8 @@ export default {
     api.get<AccessResponse>('/auth/autologin', {
       params: { token, ...(pollId ? { pollId } : {}) }
     }),
+  verifyMagicLink: (token: string) =>
+    api.post<MagicLinkVerifyResponse>('/auth/magic-link/verify', { token }),
   startEmailLogin: (payload: { email: string; pollId?: string }) =>
     api.post<EmailLoginStartResponse>('/auth/email/start', payload),
   getMe: (token: string) => api.get<UserProfileResponse>('/user/me', authHeaders(token)),

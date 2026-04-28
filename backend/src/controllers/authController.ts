@@ -1,9 +1,14 @@
 import { Request, Response } from 'express';
 import crypto from 'crypto';
 import prisma from '../services/db';
-import { createAutologinToken, deriveAuthKey, verifyAutologinToken } from '../utils/token';
+import { createAutologinToken, verifyAutologinToken } from '../utils/token';
 import { sendLoginEmail } from '../services/email.service';
-import { pickRandomAvatarColor } from '../utils/avatarColor';
+import {
+  ensureUserAvatarColor,
+  findOrCreateEmailUser,
+  normalizeEmail,
+  resolveSessionUser
+} from '../services/authSession';
 
 const frontendUrl = process.env.FRONTEND_URL ?? process.env.APP_URL ?? 'http://localhost:8081';
 const backendPublicUrl =
@@ -12,18 +17,25 @@ const backendPublicUrl =
   process.env.BACKEND_URL ??
   `http://localhost:${process.env.PORT || 3001}`;
 
-const normalizeEmail = (value: string) => value.trim().toLowerCase();
 const hashOneTimeToken = (token: string) => crypto.createHash('sha256').update(token).digest('hex');
-const ensureUserAvatarColor = async <T extends { id: string; avatarColor: string | null }>(user: T) => {
-  if (user.avatarColor) {
-    return user;
-  }
 
-  return prisma.user.update({
-    where: { id: user.id },
-    data: { avatarColor: pickRandomAvatarColor() }
-  });
-};
+const serializeUser = (user: {
+  id: string;
+  authKey: string | null;
+  email: string | null;
+  name: string | null;
+  avatarColor: string | null;
+  avatarImage: string | null;
+  createdAt: Date;
+}) => ({
+  id: user.id,
+  authKey: user.authKey,
+  email: user.email,
+  name: user.name,
+  avatarColor: user.avatarColor,
+  avatarImage: user.avatarImage,
+  createdAt: user.createdAt
+});
 
 const ensureMembershipFromPoll = async (userId: string, pollId: string | null) => {
   if (!pollId) {
@@ -48,6 +60,45 @@ const ensureMembershipFromPoll = async (userId: string, pollId: string | null) =
   return { id: poll.groupId };
 };
 
+const verifyMagicLinkToken = async (token: string) => {
+  const tokenHash = hashOneTimeToken(token);
+
+  const emailToken = await prisma.emailLoginToken.findUnique({
+    where: { tokenHash }
+  });
+
+  if (!emailToken || emailToken.usedAt || emailToken.expiresAt < new Date()) {
+    throw new Error('MAGIC_LINK_INVALID');
+  }
+
+  if (!emailToken.email) {
+    throw new Error('MAGIC_LINK_EMAIL_MISSING');
+  }
+
+  const nameFromEmail = emailToken.email.split('@')[0] || null;
+  const { authSubject, user } = await findOrCreateEmailUser(emailToken.email, {
+    name: nameFromEmail
+  });
+
+  await prisma.emailLoginToken.update({
+    where: { id: emailToken.id },
+    data: { usedAt: new Date(), userId: user.id }
+  });
+
+  await ensureMembershipFromPoll(user.id, emailToken.pollId);
+
+  return {
+    email: emailToken.email,
+    pollId: emailToken.pollId,
+    sessionToken: createAutologinToken(authSubject, undefined, {
+      userId: user.id,
+      email: user.email,
+      name: user.name
+    }),
+    user
+  };
+};
+
 export const autologinHandler = async (req: Request, res: Response) => {
   const token = typeof req.query.token === 'string' ? req.query.token : '';
   const pollId = typeof req.query.pollId === 'string' ? req.query.pollId : '';
@@ -58,14 +109,7 @@ export const autologinHandler = async (req: Request, res: Response) => {
 
   try {
     const payload = verifyAutologinToken(token);
-    const authKey = deriveAuthKey(payload.sub);
-
-    let user = await prisma.user.upsert({
-      where: { authKey },
-      update: {},
-      create: { authKey }
-    });
-    user = await ensureUserAvatarColor(user);
+    const { user } = await resolveSessionUser(payload);
 
     if (pollId) {
       await ensureMembershipFromPoll(user.id, pollId);
@@ -88,18 +132,16 @@ export const autologinHandler = async (req: Request, res: Response) => {
     }));
 
     const nextStep = user.name ? 'groupList' : 'onboarding';
+    const sessionToken = createAutologinToken(payload.sub, undefined, {
+      userId: user.id,
+      email: user.email,
+      name: user.name
+    });
 
     return res.json({
       nextStep,
-      token,
-      user: {
-        id: user.id,
-        authKey: user.authKey,
-        name: user.name,
-        avatarColor: user.avatarColor,
-        avatarImage: user.avatarImage,
-        createdAt: user.createdAt
-      },
+      token: sessionToken,
+      user: serializeUser(user),
       groups,
       pollId: pollId || null
     });
@@ -117,29 +159,23 @@ export const standaloneLoginHandler = async (req: Request, res: Response) => {
 
   try {
     const subject = `standalone:${crypto.randomUUID()}`;
-    const authKey = deriveAuthKey(subject);
     const token = createAutologinToken(subject);
-    let user = await prisma.user.upsert({
-      where: { authKey },
-      update: { name },
-      create: {
-        authKey,
-        name
-      }
+    const payload = verifyAutologinToken(token);
+    const { user } = await resolveSessionUser(payload);
+    let updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: { name }
     });
-    user = await ensureUserAvatarColor(user);
+    updatedUser = await ensureUserAvatarColor(updatedUser);
+    const sessionToken = createAutologinToken(subject, undefined, {
+      userId: updatedUser.id,
+      name: updatedUser.name
+    });
 
     return res.json({
       nextStep: 'groupLobby',
-      token,
-      user: {
-        id: user.id,
-        authKey: user.authKey,
-        name: user.name,
-        avatarColor: user.avatarColor,
-        avatarImage: user.avatarImage,
-        createdAt: user.createdAt
-      }
+      token: sessionToken,
+      user: serializeUser(updatedUser)
     });
   } catch (error) {
     return res.status(500).json({ message: 'No se pudo iniciar el acceso standalone', error });
@@ -155,53 +191,6 @@ export const startEmailLoginHandler = async (req: Request, res: Response) => {
   }
 
   try {
-    const authSubject = `email:${email}`;
-    const authKey = deriveAuthKey(authSubject);
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-      select: {
-        id: true,
-        authKey: true,
-        name: true,
-        avatarColor: true,
-        avatarImage: true,
-        createdAt: true
-      }
-    });
-
-    // If the email is already known and compatible with our auth subject,
-    // skip sending a new verification email and grant direct access.
-    if (existingUser && (!existingUser.authKey || existingUser.authKey === authKey)) {
-      let user = await prisma.user.update({
-        where: { id: existingUser.id },
-        data: {
-          authKey,
-          email
-        }
-      });
-      user = await ensureUserAvatarColor(user);
-
-      await ensureMembershipFromPoll(user.id, pollId || null);
-
-      const appToken = createAutologinToken(authSubject);
-
-      return res.json({
-        ok: true,
-        directLogin: true,
-        token: appToken,
-        pollId: pollId || null,
-        user: {
-          id: user.id,
-          authKey: user.authKey,
-          name: user.name,
-          avatarColor: user.avatarColor,
-          avatarImage: user.avatarImage,
-          createdAt: user.createdAt
-        },
-        message: 'Acceso directo completado.'
-      });
-    }
-
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = hashOneTimeToken(rawToken);
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
@@ -242,51 +231,54 @@ export const verifyEmailLoginHandler = async (req: Request, res: Response) => {
   }
 
   try {
-    const tokenHash = hashOneTimeToken(token);
-
-    const emailToken = await prisma.emailLoginToken.findUnique({
-      where: { tokenHash }
-    });
-
-    if (!emailToken || emailToken.usedAt || emailToken.expiresAt < new Date()) {
-      return res.status(401).json({ message: 'Enlace inválido o expirado.' });
-    }
-
-    const authSubject = `email:${emailToken.email}`;
-    const authKey = deriveAuthKey(authSubject);
-
-    const nameFromEmail = emailToken.email.split('@')[0];
-    let user = await prisma.user.upsert({
-      where: { authKey },
-      update: {
-        email: emailToken.email
-      },
-      create: {
-        authKey,
-        email: emailToken.email,
-        name: nameFromEmail
-      }
-    });
-    user = await ensureUserAvatarColor(user);
-
-    await prisma.emailLoginToken.update({
-      where: { id: emailToken.id },
-      data: { usedAt: new Date(), userId: user.id }
-    });
-
-    await ensureMembershipFromPoll(user.id, emailToken.pollId);
-
-    const appToken = createAutologinToken(authSubject);
+    const { email, pollId, sessionToken } = await verifyMagicLinkToken(token);
     const redirectUrl = new URL('/auth/email/verified', `${frontendUrl.replace(/\/$/, '')}/`);
-    redirectUrl.searchParams.set('token', appToken);
-    redirectUrl.searchParams.set('email', emailToken.email);
-    if (emailToken.pollId) {
-      redirectUrl.searchParams.set('pollId', emailToken.pollId);
+    redirectUrl.searchParams.set('token', sessionToken);
+    redirectUrl.searchParams.set('email', email);
+    if (pollId) {
+      redirectUrl.searchParams.set('pollId', pollId);
     }
 
     return res.redirect(redirectUrl.toString());
   } catch (error) {
+    if (error instanceof Error && error.message === 'MAGIC_LINK_INVALID') {
+      return res.status(401).json({ message: 'Enlace inválido o expirado.' });
+    }
+
+    if (error instanceof Error && error.message === 'MAGIC_LINK_EMAIL_MISSING') {
+      return res.status(400).json({ message: 'El enlace no incluye un email válido.' });
+    }
+
     console.error('No se pudo verificar login por email', error);
     return res.status(500).json({ message: 'No se pudo validar el enlace de email.' });
+  }
+};
+
+export const verifyMagicLinkHandler = async (req: Request, res: Response) => {
+  const token = typeof req.body?.token === 'string' ? req.body.token.trim() : '';
+
+  if (!token) {
+    return res.status(400).json({ message: 'Token obligatorio.' });
+  }
+
+  try {
+    const { user, sessionToken, pollId } = await verifyMagicLinkToken(token);
+
+    return res.json({
+      token: sessionToken,
+      user: serializeUser(user),
+      pollId: pollId || null
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'MAGIC_LINK_INVALID') {
+      return res.status(401).json({ message: 'Enlace inválido o expirado.' });
+    }
+
+    if (error instanceof Error && error.message === 'MAGIC_LINK_EMAIL_MISSING') {
+      return res.status(400).json({ message: 'El enlace no incluye un email válido.' });
+    }
+
+    console.error('No se pudo verificar magic link', error);
+    return res.status(500).json({ message: 'No se pudo validar el magic link.' });
   }
 };

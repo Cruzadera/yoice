@@ -1,8 +1,11 @@
 import crypto from 'crypto';
 
-type AutologinPayload = {
+export type SessionTokenPayload = {
   sub: string;
   exp: number;
+  userId?: string;
+  email?: string;
+  name?: string;
 };
 
 const getSecret = () => {
@@ -21,10 +24,21 @@ const sign = (encodedPayload: string) =>
 export const deriveAuthKey = (subject: string) =>
   crypto.createHmac('sha256', getSecret()).update(subject).digest('hex');
 
-export const createAutologinToken = (subject: string, expiresInSeconds = 60 * 60 * 24 * 7) => {
-  const payload: AutologinPayload = {
+export const createAutologinToken = (
+  subject: string,
+  expiresInSeconds = 60 * 60 * 24 * 7,
+  metadata?: {
+    userId?: string;
+    email?: string | null;
+    name?: string | null;
+  }
+) => {
+  const payload: SessionTokenPayload = {
     sub: subject,
-    exp: Math.floor(Date.now() / 1000) + expiresInSeconds
+    exp: Math.floor(Date.now() / 1000) + expiresInSeconds,
+    ...(metadata?.userId ? { userId: metadata.userId } : {}),
+    ...(metadata?.email ? { email: metadata.email } : {}),
+    ...(metadata?.name ? { name: metadata.name } : {})
   };
 
   const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url');
@@ -33,7 +47,7 @@ export const createAutologinToken = (subject: string, expiresInSeconds = 60 * 60
   return `${encodedPayload}.${signature}`;
 };
 
-export const verifyAutologinToken = (token: string): AutologinPayload => {
+export const verifyAutologinToken = (token: string): SessionTokenPayload => {
   const [encodedPayload, signature] = token.split('.');
 
   if (!encodedPayload || !signature) {
@@ -54,7 +68,7 @@ export const verifyAutologinToken = (token: string): AutologinPayload => {
     throw new Error('Firma inválida');
   }
 
-  const payload = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8')) as Partial<AutologinPayload>;
+  const payload = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8')) as Partial<SessionTokenPayload>;
 
   if (!payload.sub || typeof payload.sub !== 'string') {
     throw new Error('Token sin subject');
@@ -66,6 +80,9 @@ export const verifyAutologinToken = (token: string): AutologinPayload => {
 
   return {
     sub: payload.sub,
-    exp: payload.exp
+    exp: payload.exp,
+    ...(payload.userId ? { userId: payload.userId } : {}),
+    ...(payload.email ? { email: payload.email } : {}),
+    ...(payload.name ? { name: payload.name } : {})
   };
 };
